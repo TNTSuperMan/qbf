@@ -1,7 +1,6 @@
 pub enum Token {
     Add(u8),
-    Left(usize),
-    Right(usize),
+    RelativeTo(isize),
     In,
     Out,
     Loop(Vec<Token>),
