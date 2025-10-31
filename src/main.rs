@@ -1,3 +1,7 @@
+use crate::bf::run;
+
+mod bf;
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     
@@ -7,7 +11,7 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                
+                run(&code);
             }
         }
     } else {
