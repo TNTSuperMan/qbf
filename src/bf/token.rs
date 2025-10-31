@@ -3,11 +3,13 @@ pub enum Token {
     RelativeTo(isize),
     In,
     Out,
-    Loop(Vec<Token>),
+    LoopStart(usize),
+    LoopEnd(usize),
 }
 
 pub fn tokenize(code: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
+    let mut loop_stack: Vec<usize> = Vec::new();
 
     for char in code.chars() {
         match char {
@@ -45,7 +47,16 @@ pub fn tokenize(code: &str) -> Vec<Token> {
             ',' => {
                 tokens.push(Token::In);
             }
-            
+            '[' => {
+                loop_stack.push(tokens.len()); // ループ先頭のASTポインタになるよ
+                tokens.push(Token::LoopStart(usize::MAX));
+            }
+            ']' => {
+                let start = loop_stack.pop().unwrap();
+                let end = loop_stack.len(); // 上のコメントと同じ感じ
+                tokens.push(Token::LoopEnd(start));
+                tokens[start] = Token::LoopStart(end);
+            }
             _ => {}
         }
     }
