@@ -1,6 +1,6 @@
-use crate::bf::run;
+use crate::tokenizer::tokenize;
 
-mod bf;
+mod tokenizer;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -11,7 +11,7 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                run(&code);
+                let token = tokenize(&code);
             }
         }
     } else {
