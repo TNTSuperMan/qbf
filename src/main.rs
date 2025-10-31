@@ -1,3 +1,16 @@
 fn main() {
-    println!("Hello, world!");
+    let args: Vec<String> = std::env::args().collect();
+    
+    if args.len() == 2 {
+        match std::fs::read_to_string(args[1].clone()) {
+            Err(e) => {
+                eprintln!("Error: {}", e);
+            }
+            Ok(code) => {
+                
+            }
+        }
+    } else {
+        println!("usage: {} <file>", args[0]);
+    }
 }
