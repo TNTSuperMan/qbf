@@ -68,7 +68,7 @@ pub fn tokenize(code: &str) -> Vec<Token> {
             }
             ']' => {
                 let start = loop_stack.pop().unwrap();
-                let end = loop_stack.len(); // 上のコメントと同じ感じ
+                let end = tokens.len(); // 上のコメントと同じ感じ
                 tokens.push(Token::LoopEnd(start));
                 tokens[start] = Token::LoopStart(end);
             }
