@@ -22,6 +22,7 @@ fn main() {
                     output: Box::new(|val| { print!("{}", val as char)}),
                 };
                 run(&mut vm, tokens);
+                println!();
             }
         }
     } else {
