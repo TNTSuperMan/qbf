@@ -1,5 +1,6 @@
 use crate::{tokenizer::tokenize, vm::BFVM};
 
+mod interpret;
 mod tokenizer;
 mod vm;
 
@@ -14,6 +15,7 @@ fn main() {
             Ok(code) => {
                 let token = tokenize(&code);
                 let mut vm = BFVM {
+                    pc: 0,
                     pointer: 0,
                     memory: vec![0u8; 30000],
                     input: Box::new(|| { 0 }),
