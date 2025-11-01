@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 pub enum Token {
     Add(u8),
     RelativeTo(isize),
@@ -5,6 +7,19 @@ pub enum Token {
     Out,
     LoopStart(usize),
     LoopEnd(usize),
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Add(count) => f.write_str(&format!("Add({})", count)),
+            Token::RelativeTo(count) => f.write_str(&format!("RelativeTo({})", count)),
+            Token::In => f.write_str("In"),
+            Token::Out => f.write_str("Out"),
+            Token::LoopStart(end) => f.write_str(&format!("LoopStart({})", end)),
+            Token::LoopEnd(start) => f.write_str(&format!("LoopEnd({})", start)),
+        }
+    }
 }
 
 pub fn tokenize(code: &str) -> Vec<Token> {
