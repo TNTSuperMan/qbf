@@ -19,7 +19,7 @@ fn main() {
                     pointer: 0,
                     memory: vec![0u8; 30000],
                     input: Box::new(|| { 0 }),
-                    output: Box::new(|_val| {}),
+                    output: Box::new(|val| { println!("{}", val as char)}),
                 };
                 run(&mut vm, tokens);
             }
