@@ -19,5 +19,6 @@ pub fn run(vm: &mut BFVM, tokens: Vec<Token>) {
                 }
             }
         }
+        vm.pc += 1;
     }
 }
