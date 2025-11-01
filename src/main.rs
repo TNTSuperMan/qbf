@@ -1,4 +1,4 @@
-use crate::{tokenizer::tokenize, vm::BFVM};
+use crate::{interpret::run, tokenizer::tokenize, vm::BFVM};
 
 mod interpret;
 mod tokenizer;
@@ -13,7 +13,7 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                let token = tokenize(&code);
+                let tokens = tokenize(&code);
                 let mut vm = BFVM {
                     pc: 0,
                     pointer: 0,
@@ -21,6 +21,7 @@ fn main() {
                     input: Box::new(|| { 0 }),
                     output: Box::new(|_val| {}),
                 };
+                run(&mut vm, tokens);
             }
         }
     } else {
