@@ -3,6 +3,7 @@ use crate::inst::{Instruction, LoopOptimizationInfo, TargetPointer};
 pub fn parse(code: &str) -> Vec<Instruction> {
     let mut tokens: Vec<Instruction> = Vec::new();
     let mut loop_stack: Vec<usize> = Vec::new();
+    let mut last_loop_start: usize = 0;
 
     for char in code.chars() {
         match char {
@@ -47,13 +48,15 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                 tokens.push(Instruction::In(TargetPointer::Current));
             }
             '[' => {
-                loop_stack.push(tokens.len()); // ループ先頭のASTポインタになるよ
+                let start = tokens.len();
+                last_loop_start = start;
+                loop_stack.push(start); // ループ先頭のASTポインタになるよ
                 tokens.push(Instruction::LoopStart(usize::MAX));
             }
             ']' => {
                 let start = loop_stack.pop().unwrap();
                 let end = tokens.len(); // 上のコメントと同じ感じ
-                tokens.push(Instruction::LoopEnd(start, LoopOptimizationInfo::new()));
+                tokens.push(Instruction::LoopEnd(start, LoopOptimizationInfo::new(last_loop_start == start)));
                 tokens[start] = Instruction::LoopStart(end);
             }
             _ => {}

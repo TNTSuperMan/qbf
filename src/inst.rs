@@ -18,13 +18,13 @@ impl TargetPointer {
 }
 
 pub struct LoopOptimizationInfo {
-    pub is_flat: Option<bool>,
+    pub is_flat: bool,
     pub pointer_assumption: Option<usize>,
 }
 impl LoopOptimizationInfo {
-    pub fn new() -> LoopOptimizationInfo {
+    pub fn new(is_flat: bool) -> LoopOptimizationInfo {
         LoopOptimizationInfo {
-            is_flat: None,
+            is_flat,
             pointer_assumption: None,
         }
     }
