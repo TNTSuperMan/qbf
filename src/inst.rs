@@ -18,7 +18,6 @@ impl TargetPointer {
 }
 
 pub enum Instruction {
-    Zero(TargetPointer),
     Add (TargetPointer, u8),
     Set (TargetPointer, u8),
 
