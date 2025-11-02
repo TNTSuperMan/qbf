@@ -31,6 +31,8 @@ impl LoopOptimizationInfo {
 }
 
 pub enum Instruction {
+    Nop,
+
     Add (TargetPointer, u8),
     Set (TargetPointer, u8),
 

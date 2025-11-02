@@ -4,6 +4,8 @@ pub fn run(vm: &mut BFVM, tokens: Vec<Instruction>) {
     let len = tokens.len();
     while vm.pc < len {
         match &tokens[vm.pc] {
+            Instruction::Nop => {}
+
             Instruction::Add(p, val) => {
                 let point = p.use_point(vm);
                 vm.memory[point] = vm.memory[point].wrapping_add(*val);
