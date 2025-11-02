@@ -1,9 +1,9 @@
 use crate::{inst::Instruction, vm::BFVM};
 
-pub fn run(vm: &mut BFVM, tokens: Vec<Instruction>) {
-    let len = tokens.len();
+pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>) {
+    let len = instrs.len();
     while vm.pc < len {
-        match &tokens[vm.pc] {
+        match &instrs[vm.pc] {
             Instruction::Nop => {}
 
             Instruction::Add(p, val) => {

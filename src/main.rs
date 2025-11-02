@@ -14,7 +14,7 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                let tokens = parse(&code);
+                let instrs = parse(&code);
                 let mut vm = BFVM {
                     pc: 0,
                     pointer: 0,
@@ -22,7 +22,7 @@ fn main() {
                     input: Box::new(|| { 0 }),
                     output: Box::new(|val| { print!("{}", val as char)}),
                 };
-                run(&mut vm, tokens);
+                run(&mut vm, instrs);
                 println!();
             }
         }
