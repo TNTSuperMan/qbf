@@ -17,6 +17,19 @@ impl TargetPointer {
     }
 }
 
+pub struct LoopOptimizationInfo {
+    pub is_flat: Option<bool>,
+    pub pointer_assumption: Option<usize>,
+}
+impl LoopOptimizationInfo {
+    pub fn new() -> LoopOptimizationInfo {
+        LoopOptimizationInfo {
+            is_flat: None,
+            pointer_assumption: None,
+        }
+    }
+}
+
 pub enum Instruction {
     Add (TargetPointer, u8),
     Set (TargetPointer, u8),
@@ -32,9 +45,5 @@ pub enum Instruction {
     Out(TargetPointer),
 
     LoopStart(usize),
-    LoopEnd(usize),
-    LoopEndWithPointerAssumption(
-        usize, // address
-        usize, // pointer
-    ),
+    LoopEnd(usize, LoopOptimizationInfo),
 }

@@ -42,13 +42,13 @@ pub fn run(vm: &mut BFVM, tokens: Vec<Instruction>) {
                     vm.pc = *jump;
                 }
             }
-            Instruction::LoopEnd(jump) => {
-                if vm.memory[vm.pointer] != 0 {
-                    vm.pc = *jump;
+            Instruction::LoopEnd(jump, opt) => {
+                if let Some(assumpt) = opt.pointer_assumption {
+                    if assumpt != vm.pointer {
+                        todo!("deopt & continue");
+                    }
                 }
-            }
-            Instruction::LoopEndWithPointerAssumption(jump, assumed_ptr) => {
-                if vm.pointer != *assumed_ptr {
+                if vm.memory[vm.pointer] != 0 {
                     vm.pc = *jump;
                 }
             }

@@ -1,4 +1,4 @@
-use crate::inst::{Instruction, TargetPointer};
+use crate::inst::{Instruction, LoopOptimizationInfo, TargetPointer};
 
 pub fn parse(code: &str) -> Vec<Instruction> {
     let mut tokens: Vec<Instruction> = Vec::new();
@@ -53,7 +53,7 @@ pub fn parse(code: &str) -> Vec<Instruction> {
             ']' => {
                 let start = loop_stack.pop().unwrap();
                 let end = tokens.len(); // 上のコメントと同じ感じ
-                tokens.push(Instruction::LoopEnd(start));
+                tokens.push(Instruction::LoopEnd(start, LoopOptimizationInfo::new()));
                 tokens[start] = Instruction::LoopStart(end);
             }
             _ => {}
