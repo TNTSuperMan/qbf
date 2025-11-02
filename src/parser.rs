@@ -1,67 +1,83 @@
-use crate::inst::{Instruction, LoopOptimizationInfo, TargetPointer};
+pub enum BFNode {
+    Add(u8),
+    Set(u8),
+    To(isize),
+    Out,
+    In,
+    LoopStart(usize),
+    LoopEnd(usize, bool), // is_flat
+}
 
-pub fn parse(code: &str) -> Vec<Instruction> {
-    let mut tokens: Vec<Instruction> = Vec::new();
+pub fn parse(code: &str) -> Vec<BFNode> {
+    let mut nodes: Vec<BFNode> = Vec::new();
     let mut loop_stack: Vec<usize> = Vec::new();
     let mut last_loop_start: usize = 0;
 
     for char in code.chars() {
         match char {
             '+' => {
-                if let Some(Instruction::Add(_, count)) = tokens.last_mut() {
-                    *count = count.wrapping_add(1);
+                if let Some(BFNode::Add(value)) = nodes.last_mut() {
+                    *value = value.wrapping_add(1);
+                } else if let Some(BFNode::Set(value)) = nodes.last_mut() {
+                    *value = value.wrapping_add(1);
                 } else {
-                    tokens.push(Instruction::Add(
-                        TargetPointer::Current,
-                        1
-                    ));
+                    nodes.push(BFNode::Add(1));
                 }
             }
             '-' => {
-                if let Some(Instruction::Add(_, count)) = tokens.last_mut() {
-                    *count = count.wrapping_sub(1);
+                if let Some(BFNode::Add(value)) = nodes.last_mut() {
+                    *value = value.wrapping_sub(1);
+                } else if let Some(BFNode::Set(value)) = nodes.last_mut() {
+                    *value = value.wrapping_sub(1);
                 } else {
-                    tokens.push(Instruction::Add(
-                        TargetPointer::Current,
-                        255 // 255u8 = -1i8
-                    ));
+                    nodes.push(BFNode::Add(255)); // 255u8 = -1i8
                 }
             }
             '>' => {
-                if let Some(Instruction::To(TargetPointer::Relative(to))) = tokens.last_mut() {
+                if let Some(BFNode::To(to)) = nodes.last_mut() {
                     *to += 1;
                 } else {
-                    tokens.push(Instruction::To(TargetPointer::Relative(1)));
+                    nodes.push(BFNode::To(1));
                 }
             }
             '<' => {
-                if let Some(Instruction::To(TargetPointer::Relative(to))) = tokens.last_mut() {
+                if let Some(BFNode::To(to)) = nodes.last_mut() {
                     *to -= 1;
                 } else {
-                    tokens.push(Instruction::To(TargetPointer::Relative(-1)));
+                    nodes.push(BFNode::To(-1));
                 }
             }
             '.' => {
-                tokens.push(Instruction::Out(TargetPointer::Current));
+                nodes.push(BFNode::Out);
             }
             ',' => {
-                tokens.push(Instruction::In(TargetPointer::Current));
+                nodes.push(BFNode::In);
             }
             '[' => {
-                let start = tokens.len();
+                let start = nodes.len();
                 last_loop_start = start;
                 loop_stack.push(start); // ループ先頭のASTポインタになるよ
-                tokens.push(Instruction::LoopStart(usize::MAX));
+                nodes.push(BFNode::LoopStart(usize::MAX));
             }
             ']' => {
                 let start = loop_stack.pop().unwrap();
-                let end = tokens.len(); // 上のコメントと同じ感じ
-                tokens.push(Instruction::LoopEnd(start, LoopOptimizationInfo::new(last_loop_start == start)));
-                tokens[start] = Instruction::LoopStart(end);
+                let end = nodes.len(); // 上のコメントと同じ感じ
+                if end - start == 2 {
+                    match nodes.last() {
+                        Some(BFNode::Add(255)) => {
+                            nodes.truncate(nodes.len() - 2);
+                            nodes.push(BFNode::Set(0));
+                            continue;
+                        }
+                        _ => {}
+                    }
+                }
+                nodes.push(BFNode::LoopEnd(start, last_loop_start == start));
+                nodes[start] = BFNode::LoopStart(end);
             }
             _ => {}
         }
     }
 
-    tokens
+    nodes
 }
