@@ -25,7 +25,7 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
         usize, // address
         isize, // pointer
     )> = Vec::new();
-    let mut hints = Hints {
+    let hints = Hints {
     };
     let mut pointer: isize = 0;
 
