@@ -10,7 +10,7 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
             Instruction::Breakpoint => {
                 // 標準出力と分けるだけ、エラーじゃない
                 eprintln!("PC: {}", vm.pc);
-                for i in 0..100 {
+                for i in 0..64 {
                     eprint!("{} ", vm.memory[i]);
                 }
             }
