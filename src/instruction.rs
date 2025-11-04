@@ -1,5 +1,6 @@
 use crate::parser::BFNode;
 
+#[derive(Clone)]
 pub enum Instruction {
     Add (isize, u8),
     Set (isize, u8),
