@@ -70,11 +70,14 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
 
                 if let Some(ref dests_raw) = masz_dests {
                     let mut dests = dests_raw.clone();
-                    if is_ptr_stable && dests.contains(&(pointer, 255)) {
-                        dests.retain(|&dest| dest != (pointer, 255));
-                        instructions.truncate(start);
-                        instructions.push(Instruction::MulAndSetZero(pointer, dests.to_vec()));
-                        continue;
+                    let decr_pos = dests.iter().position(|&dest| dest == (pointer, 255));
+                    if is_ptr_stable && decr_pos.is_some() {
+                        dests.remove(decr_pos.unwrap());
+                        if !dests.iter().any(|&(ptr, _)| ptr == pointer) {
+                            instructions.truncate(start);
+                            instructions.push(Instruction::MulAndSetZero(pointer, dests.to_vec()));
+                            continue;
+                        }
                     }
                 }
 
