@@ -1,6 +1,6 @@
-use crate::{interpret::run, parser::parse, vm::BFVM};
+use crate::{interpret::run, instruction::ast_to_instructions, parser::parse, vm::BFVM};
 
-mod inst;
+mod instruction;
 mod interpret;
 mod parser;
 mod vm;
@@ -14,7 +14,8 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                let instrs = parse(&code);
+                let ast = parse(&code);
+                let (instructions, hints) = ast_to_instructions(ast);
                 let mut vm = BFVM {
                     pc: 0,
                     pointer: 0,
@@ -22,7 +23,7 @@ fn main() {
                     input: Box::new(|| { 0 }),
                     output: Box::new(|val| { print!("{}", val as char)}),
                 };
-                run(&mut vm, instrs);
+                run(&mut vm, instructions, hints);
                 println!();
             }
         }

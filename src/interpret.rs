@@ -1,57 +1,56 @@
-use crate::{inst::Instruction, vm::BFVM};
+use crate::{instruction::{Instruction, Hints}, vm::BFVM};
 
-pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>) {
+pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
+    let mut loop_ptr_stack: Vec<isize> = Vec::new();
+    let mut offset: isize = 0;
     let len = instrs.len();
+
     while vm.pc < len {
         match &instrs[vm.pc] {
-            Instruction::Nop => {}
-
             Instruction::Add(p, val) => {
-                let point = p.use_point(vm);
-                vm.memory[point] = vm.memory[point].wrapping_add(*val);
+                let ptr = (*p + offset) as usize;
+                vm.memory[ptr] = vm.memory[ptr].wrapping_add(*val);
             }
             Instruction::Set(p, val) => {
-                let point = p.use_point(vm);
-                vm.memory[point] = *val;
+                let ptr = (*p + offset) as usize;
+                vm.memory[ptr] = *val;
             }
 
             Instruction::MulAndSetZero(source, dests) => {
-                let source_ptr = source.use_point(vm);
+                let source_ptr = (*source + offset) as usize;
                 let source_val = vm.memory[source_ptr];
                 for (dest_p, m) in dests {
-                    let dest_point = dest_p.use_point(vm);
-                    vm.pointer = dest_point;
-                    vm.memory[dest_point] = vm.memory[dest_point].wrapping_add(source_val * m);
+                    let dest_ptr = (*dest_p + offset) as usize;
+                    vm.pointer = dest_ptr;
+                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val * m);
                 }
                 vm.memory[source_ptr] = 0;
             }
 
-            Instruction::To(p) => {
-                p.use_point(vm);
-            }
-
             Instruction::In(p) => {
-                let point = p.use_point(vm);
-                vm.memory[point] = vm.input.as_ref()();
+                let ptr = (*p + offset) as usize;
+                vm.memory[ptr] = vm.input.as_ref()();
             }
             Instruction::Out(p) => {
-                let point = p.use_point(vm);
-                vm.output.as_ref()(vm.memory[point]);
+                let ptr = (*p + offset) as usize;
+                vm.output.as_ref()(vm.memory[ptr]);
             }
 
-            Instruction::LoopStart(jump) => {
+            Instruction::LoopStart(end, cond, is_ptr_stable) => {
+                if !is_ptr_stable {
+                    loop_ptr_stack.push(*cond + offset);
+                }
                 if vm.memory[vm.pointer] == 0 {
-                    vm.pc = *jump;
+                    vm.pc = *end;
                 }
             }
-            Instruction::LoopEnd(jump, opt) => {
-                if let Some(assumpt) = opt.pointer_assumption {
-                    if assumpt != vm.pointer {
-                        todo!("deopt & continue");
-                    }
+            Instruction::LoopEnd(start, cond, is_ptr_stable) => {
+                if !is_ptr_stable {
+                    let start_ptr = loop_ptr_stack.pop().unwrap();
+                    offset += (*cond + offset) - start_ptr;
                 }
                 if vm.memory[vm.pointer] != 0 {
-                    vm.pc = *jump;
+                    vm.pc = *start;
                 }
             }
         }
