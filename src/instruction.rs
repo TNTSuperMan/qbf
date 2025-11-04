@@ -31,7 +31,7 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
 
     let mut masz_dests: Option<Vec<(isize, u8)>> = None; // masz: MulAndSetZero
 
-    for (i, node) in ast.iter().enumerate() {
+    for node in ast.iter() {
         match *node {
             BFNode::Add(val) => {
                 if let Some(dests) = masz_dests.as_mut() {
@@ -56,7 +56,7 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
                 instructions.push(Instruction::In(pointer));
             }
             BFNode::LoopStart(end) => {
-                loop_stack.push((i, pointer));
+                loop_stack.push((instructions.len(), pointer));
                 instructions.push(Instruction::LoopStart(usize::MAX, pointer, false));
                 if let BFNode::LoopEnd(_, true) = ast[end] {
                     masz_dests = Some(Vec::new());
@@ -64,7 +64,7 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
             }
             BFNode::LoopEnd(_start, _is_flat) => {
                 let (start, start_ptr) = loop_stack.pop().unwrap();
-                let end = i;
+                let end = instructions.len();
 
                 let is_ptr_stable = start_ptr == pointer;
 
