@@ -2,6 +2,8 @@ use crate::parser::BFNode;
 
 #[derive(Clone)]
 pub enum Instruction {
+    Breakpoint,
+
     Add (isize, u8),
     Set (isize, u8),
 
@@ -34,6 +36,7 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
 
     for node in ast.iter() {
         match *node {
+            BFNode::Breakpoint => { instructions.push(Instruction::Breakpoint) }
             BFNode::Add(val) => {
                 if let Some(dests) = masz_dests.as_mut() {
                     dests.push((pointer, val));

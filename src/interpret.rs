@@ -6,8 +6,15 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
     let len = instrs.len();
 
     while vm.pc < len {
-        println!("pc: {}", vm.pc);
         match &instrs[vm.pc] {
+            Instruction::Breakpoint => {
+                // 標準出力と分けるだけ、エラーじゃない
+                eprintln!("PC: {}", vm.pc);
+                for i in 0..100 {
+                    eprint!("{} ", vm.memory[i]);
+                }
+            }
+
             Instruction::Add(p, val) => {
                 let ptr = (*p + offset) as usize;
                 vm.memory[ptr] = vm.memory[ptr].wrapping_add(*val);

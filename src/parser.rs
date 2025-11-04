@@ -1,4 +1,5 @@
 pub enum BFNode {
+    Breakpoint,
     Add(u8),
     Set(u8),
     To(isize),
@@ -15,6 +16,7 @@ pub fn parse(code: &str) -> Vec<BFNode> {
 
     for char in code.chars() {
         match char {
+            '#' => { nodes.push(BFNode::Breakpoint) }
             '+' => {
                 if let Some(BFNode::Add(value)) = nodes.last_mut() {
                     *value = value.wrapping_add(1);
