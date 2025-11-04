@@ -45,23 +45,19 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
             }
 
             Instruction::LoopStart(end, cond, is_ptr_stable) => {
-                let absolute_cond = *cond + offset;
-                if vm.memory[absolute_cond as usize] == 0 {
+                if vm.memory[(*cond + offset) as usize] == 0 {
                     vm.pc = *end;
                 } else if !is_ptr_stable {
-                    loop_ptr_stack.push(absolute_cond);
+                    loop_ptr_stack.push(*cond);
                 }
             }
             Instruction::LoopEnd(start, cond, is_ptr_stable) => {
-                let absolute_cond = *cond + offset;
                 if !is_ptr_stable {
                     let start_ptr = loop_ptr_stack.pop().unwrap();
-                    offset += absolute_cond - start_ptr;
+                    offset += *cond - start_ptr;
                 }
-                if vm.memory[absolute_cond as usize] != 0 {
-                    loop_ptr_stack.push(*cond + offset);
-                    vm.pc = *start;
-                }
+                vm.pc = *start;
+                continue; // LoopStartに処理を飛ばすため、PCインクリメントを回避
             }
         }
         vm.pc += 1;
