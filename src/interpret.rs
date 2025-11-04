@@ -37,19 +37,21 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
             }
 
             Instruction::LoopStart(end, cond, is_ptr_stable) => {
+                let absolute_cond = *cond + offset;
                 if !is_ptr_stable {
-                    loop_ptr_stack.push(*cond + offset);
+                    loop_ptr_stack.push(absolute_cond);
                 }
-                if vm.memory[vm.pointer] == 0 {
+                if vm.memory[absolute_cond as usize] == 0 {
                     vm.pc = *end;
                 }
             }
             Instruction::LoopEnd(start, cond, is_ptr_stable) => {
+                let absolute_cond = *cond + offset;
                 if !is_ptr_stable {
                     let start_ptr = loop_ptr_stack.pop().unwrap();
-                    offset += (*cond + offset) - start_ptr;
+                    offset += absolute_cond - start_ptr;
                 }
-                if vm.memory[vm.pointer] != 0 {
+                if vm.memory[absolute_cond as usize] != 0 {
                     vm.pc = *start;
                 }
             }
