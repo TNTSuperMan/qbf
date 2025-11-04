@@ -68,8 +68,10 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
 
                 let is_ptr_stable = start_ptr == pointer;
 
-                if let Some(ref dests) = masz_dests {
-                    if is_ptr_stable {
+                if let Some(ref dests_raw) = masz_dests {
+                    let mut dests = dests_raw.clone();
+                    if is_ptr_stable && dests.contains(&(pointer, 255)) {
+                        dests.retain(|&dest| dest != (pointer, 255));
                         instructions.truncate(start);
                         instructions.push(Instruction::MulAndSetZero(pointer, dests.to_vec()));
                         continue;
