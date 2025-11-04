@@ -45,7 +45,6 @@ pub fn ast_to_instructions(ast: Vec<BFNode>) -> (Vec<Instruction>, Hints) {
                 instructions.push(Instruction::Set(pointer, val));
             }
             BFNode::To(to) => {
-                if masz_dests.is_some() { masz_dests = None }
                 pointer += to;
             }
             BFNode::Out => {
