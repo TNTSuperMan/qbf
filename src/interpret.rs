@@ -1,4 +1,4 @@
-use crate::{instruction::{Instruction, Hints}, vm::BFVM};
+use crate::{instruction::{Hints, Instruction}, vm::BFVM};
 
 pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
     let mut loop_ptr_stack: Vec<isize> = Vec::new();
@@ -6,13 +6,15 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
     let len = instrs.len();
 
     while vm.pc < len {
+        println!("PC: {} offset: {}", vm.pc, offset);
         match &instrs[vm.pc] {
             Instruction::Breakpoint => {
                 // 標準出力と分けるだけ、エラーじゃない
-                eprintln!("PC: {}", vm.pc);
-                for i in 0..64 {
-                    eprint!("{} ", vm.memory[i]);
+                eprint!("PC: {}, ", vm.pc);
+                for i in 0..50 {
+                    eprint!("{:02x} ", vm.memory[i]);
                 }
+                eprintln!();
             }
 
             Instruction::Add(p, val) => {
