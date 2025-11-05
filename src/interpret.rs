@@ -1,7 +1,6 @@
 use crate::{instruction::{Hints, Instruction}, vm::BFVM};
 
 pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
-    let mut loop_ptr_stack: Vec<isize> = Vec::new();
     let mut offset: isize = 0;
     let len = instrs.len();
 
@@ -46,17 +45,18 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
                 vm.output.as_ref()(vm.memory[ptr]);
             }
 
-            Instruction::LoopStart(end, cond, is_ptr_stable) => {
+            Instruction::LoopStart(end, cond, _is_ptr_stable) => {
                 if vm.memory[(*cond + offset) as usize] == 0 {
                     vm.pc = *end;
-                } else if !is_ptr_stable {
-                    loop_ptr_stack.push(*cond);
                 }
             }
             Instruction::LoopEnd(start, cond, is_ptr_stable) => {
                 if !is_ptr_stable {
-                    let start_ptr = loop_ptr_stack.pop().unwrap();
-                    offset += *cond - start_ptr;
+                    if let Instruction::LoopStart(_end, start_cond, _is_ptr_stable) = instrs[*start] {
+                        offset += *cond - start_cond;
+                    } else {
+                        unreachable!("対になってるループ先頭がLoopStart以外な訳がないよね");
+                    }
                 }
                 vm.pc = *start;
                 continue; // LoopStartに処理を飛ばすため、PCインクリメントを回避
