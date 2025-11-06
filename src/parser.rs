@@ -17,7 +17,8 @@ pub enum InstOp {
     Out,
 
     LoopStart(usize), // end
-    LoopEnd(usize, Option<isize>), // start, diff
+    LoopEnd(usize), // start
+    LoopEndWithOffset(usize, isize), // start, diff
 }
 
 pub fn parse(code: &str) -> Vec<Instruction> {
@@ -120,11 +121,11 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                 }
 
                 insts[start].opcode = InstOp::LoopStart(end);
-                insts.push(Instruction { pointer: end_ptr, opcode: InstOp::LoopEnd(start, if is_ptr_stable {
-                    None
+                if is_ptr_stable {
+                    insts.push(Instruction { pointer: end_ptr, opcode: InstOp::LoopEnd(start) });
                 } else {
-                    Some(end_ptr - start_ptr)
-                })});
+                    insts.push(Instruction { pointer: end_ptr, opcode: InstOp::LoopEndWithOffset(start, end_ptr - start_ptr) });
+                }
             }
             _ => {}
         }
