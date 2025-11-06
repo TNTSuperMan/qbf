@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::{interpret::run, parser::parse, trace::instructions_to_string, vm::BFVM};
+use crate::{trace::instructions_to_string, vm::BFVM};
 
 mod interpret;
 mod parser;
@@ -16,16 +16,14 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                let insts = parse(&code);
-                fs::write("./box/instructions", instructions_to_string(insts.clone())).expect("failed to write");
-                let mut vm = BFVM {
-                    pc: 0,
-                    memory: vec![0u8; 30000],
-                    input: Box::new(|| { 0 }),
-                    output: Box::new(|val| { print!("{}", val as char)}),
-                };
-                run(&mut vm, insts);
-                println!();
+                let mut vm = BFVM::new(
+                    &code,
+                    65536,
+                    Box::new(|val| { print!("{}", val as char)}),
+                    Box::new(|| { 0 }),
+                );
+                fs::write("./box/instructions", instructions_to_string(vm.insts.clone())).expect("failed to write");
+                vm.run();
             }
         }
     } else {
