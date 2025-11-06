@@ -1,4 +1,4 @@
-use crate::{parser::{InstOp, Instruction}, vm::BFVM};
+use crate::{io::{input, output}, parser::{InstOp, Instruction}, vm::BFVM};
 
 pub fn step(vm: &mut BFVM) {
     let Instruction { opcode, pointer: ptr } = &vm.insts[vm.pc];
@@ -31,11 +31,11 @@ pub fn step(vm: &mut BFVM) {
 
         InstOp::In => {
             let ptr = (ptr + vm.offset) as usize;
-            vm.memory[ptr] = vm.input.as_ref()();
+            vm.memory[ptr] = input();
         }
         InstOp::Out => {
             let ptr = (ptr + vm.offset) as usize;
-            vm.output.as_ref()(vm.memory[ptr]);
+            output(vm.memory[ptr]);
         }
 
         InstOp::LoopStart(end) => {

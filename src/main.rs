@@ -3,6 +3,7 @@ use std::fs;
 use crate::{trace::instructions_to_string, vm::BFVM};
 
 mod interpret;
+mod io;
 mod parser;
 mod trace;
 mod vm;
@@ -19,8 +20,6 @@ fn main() {
                 let mut vm = BFVM::new(
                     &code,
                     65536,
-                    Box::new(|val| { print!("{}", val as char)}),
-                    Box::new(|| { 0 }),
                 );
                 fs::write("./box/instructions", instructions_to_string(vm.insts.clone())).expect("failed to write");
                 vm.run();
