@@ -1,5 +1,5 @@
 pub extern "C" fn output(val: u8) {
-    print!("{}", val);
+    print!("{}", val as char);
 }
 
 pub extern "C" fn input() -> u8 {
