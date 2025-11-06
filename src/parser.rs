@@ -37,7 +37,6 @@ pub fn parse(code: &str) -> Vec<Instruction> {
     }
 
     for char in code.chars() {
-        print!("{}\n{}", insts.len(), char);
         match char {
             '#' => { push_inst!(InstOp::Breakpoint) }
             '+' => {
