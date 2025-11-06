@@ -1,8 +1,7 @@
 use std::fs;
 
-use crate::{instruction::ast_to_instructions, interpret::run, parser::parse, trace::instructions_to_string, vm::BFVM};
+use crate::{interpret::run, parser::parse, trace::instructions_to_string, vm::BFVM};
 
-mod instruction;
 mod interpret;
 mod parser;
 mod trace;
@@ -17,16 +16,15 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                let ast = parse(&code);
-                let (instructions, hints) = ast_to_instructions(ast);
-                fs::write("./box/instructions", instructions_to_string(instructions.clone())).expect("failed to write");
+                let insts = parse(&code);
+                fs::write("./box/instructions", instructions_to_string(insts.clone())).expect("failed to write");
                 let mut vm = BFVM {
                     pc: 0,
                     memory: vec![0u8; 30000],
                     input: Box::new(|| { 0 }),
                     output: Box::new(|val| { print!("{}", val as char)}),
                 };
-                run(&mut vm, instructions, hints);
+                run(&mut vm, insts);
                 println!();
             }
         }

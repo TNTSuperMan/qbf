@@ -1,4 +1,4 @@
-use crate::instruction::Instruction;
+use crate::parser::{InstOp, Instruction};
 
 fn dests_to_string(dests: Vec<(isize, u8)>) -> String {
     let mut strs: Vec<String> = Vec::new();
@@ -15,16 +15,16 @@ fn indent(level: usize) -> String {
 pub fn instructions_to_string(instructions: Vec<Instruction>) -> String {
     let mut strings: Vec<String> = Vec::new();
     let mut lv: usize = 0;
-    for inst in instructions {
-        strings.push(match inst {
-            Instruction::Breakpoint(ptr) => format!("{}@BREAKPOINT! at {}", indent(lv), ptr),
-            Instruction::Add(ptr, val) => format!("{}[{}] += {}", indent(lv), ptr, val),
-            Instruction::Set(ptr, val) => format!("{}[{}] = {}", indent(lv), ptr, val),
-            Instruction::MulAndSetZero(src, dests) => format!("{}MulAndSetZero [{}] => {}", indent(lv),src,dests_to_string(dests)),
-            Instruction::Out(ptr) => format!("{}Out {}", indent(lv), ptr),
-            Instruction::In(ptr) => format!("{}In {}", indent(lv), ptr),
-            Instruction::LoopStart(addr, ptr, is_stable) => { let i = indent(lv); lv += 1; format!("{}loop {{ -> {} [{}] {}", i, addr, ptr, if is_stable { "STABLE" } else { "unstable" }) },
-            Instruction::LoopEnd(addr, ptr, is_stable) => { lv -= 1; format!("{}}} <- {} [{}] {}", indent(lv), addr, ptr, if is_stable { "STABLE" } else { "unstable" }) },
+    for Instruction { opcode, pointer } in instructions {
+        strings.push(match opcode {
+            InstOp::Breakpoint => format!("{}@BREAKPOINT! at {}", indent(lv), pointer),
+            InstOp::Add(val) => format!("{}[{}] += {}", indent(lv), pointer, val),
+            InstOp::Set(val) => format!("{}[{}] = {}", indent(lv), pointer, val),
+            InstOp::MulAndSetZero(dests) => format!("{}MulAndSetZero [{}] => {}", indent(lv),pointer,dests_to_string(dests)),
+            InstOp::Out => format!("{}Out {}", indent(lv), pointer),
+            InstOp::In => format!("{}In {}", indent(lv), pointer),
+            InstOp::LoopStart(addr, is_stable) => { let i = indent(lv); lv += 1; format!("{}loop {{ -> {} [{}] {}", i, addr, pointer, if is_stable { "STABLE" } else { "unstable" }) },
+            InstOp::LoopEnd(addr, is_stable) => { lv -= 1; format!("{}}} <- {} [{}] {}", indent(lv), addr, pointer, if is_stable { "STABLE" } else { "unstable" }) },
         });
     }
     strings.join("\n")
