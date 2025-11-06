@@ -48,11 +48,12 @@ pub fn run(vm: &mut BFVM, insts: Vec<Instruction>) {
                 }
             }
             InstOp::LoopEnd(start, diff) => {
+                if vm.memory[(ptr + offset) as usize] != 0 {
+                    vm.pc = *start;
+                }
                 if let Some(d) = diff {
                     offset += d;
                 }
-                vm.pc = *start;
-                continue; // LoopStartに処理を飛ばすため、PCインクリメントを回避
             }
         }
         vm.pc += 1;
