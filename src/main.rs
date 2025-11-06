@@ -22,7 +22,6 @@ fn main() {
                 fs::write("./box/instructions", instructions_to_string(instructions.clone())).expect("failed to write");
                 let mut vm = BFVM {
                     pc: 0,
-                    pointer: 0,
                     memory: vec![0u8; 30000],
                     input: Box::new(|| { 0 }),
                     output: Box::new(|val| { print!("{}", val as char)}),

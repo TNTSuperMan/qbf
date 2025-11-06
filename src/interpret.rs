@@ -25,7 +25,6 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
                 let source_val = vm.memory[source_ptr];
                 for (dest_p, m) in dests {
                     let dest_ptr = (*dest_p + offset) as usize;
-                    vm.pointer = dest_ptr;
                     vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val * m);
                 }
                 vm.memory[source_ptr] = 0;
