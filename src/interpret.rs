@@ -8,11 +8,7 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
         match &instrs[vm.pc] {
             Instruction::Breakpoint(ptr) => {
                 // 標準出力と分けるだけ、エラーじゃない
-                eprint!("PC: {}, PTR: {}, ", vm.pc, offset + ptr);
-                for i in 0..50 {
-                    eprint!("{:02x} ", vm.memory[i]);
-                }
-                eprintln!();
+                eprintln!("PC: {}, PTR: {}, ", vm.pc, offset + ptr);
             }
 
             Instruction::Add(p, val) => {
