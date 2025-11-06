@@ -23,11 +23,13 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
             Instruction::MulAndSetZero(source, dests) => {
                 let source_ptr = (*source + offset) as usize;
                 let source_val = vm.memory[source_ptr];
-                for (dest_p, m) in dests {
-                    let dest_ptr = (*dest_p + offset) as usize;
-                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val * m);
+                if source_val != 0 {
+                    for (dest_p, m) in dests {
+                        let dest_ptr = (*dest_p + offset) as usize;
+                        vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val * m);
+                    }
+                    vm.memory[source_ptr] = 0;
                 }
-                vm.memory[source_ptr] = 0;
             }
 
             Instruction::In(p) => {
