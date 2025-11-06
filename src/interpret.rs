@@ -16,6 +16,11 @@ pub fn step(vm: &mut BFVM) {
             vm.memory[ptr] = *val;
         }
 
+        InstOp::Shift(diff) => {
+            while vm.memory[(pointer + vm.offset) as usize] != 0 {
+                vm.offset += diff;
+            }
+        }
         InstOp::MulAndSetZero(dests) => {
             let source_val = vm.memory[ptr];
             if source_val != 0 {

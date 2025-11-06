@@ -20,6 +20,7 @@ pub fn instructions_to_string(instructions: Vec<Instruction>) -> String {
             InstOp::Breakpoint => format!("{}@BREAKPOINT! at {}", indent(lv), pointer),
             InstOp::Add(val) => format!("{}[{}] += {}", indent(lv), pointer, val),
             InstOp::Set(val) => format!("{}[{}] = {}", indent(lv), pointer, val),
+            InstOp::Shift(diff) => format!("{}Shift({})", indent(lv), diff),
             InstOp::MulAndSetZero(dests) => format!("{}MulAndSetZero [{}] => {}", indent(lv),pointer,dests_to_string(dests)),
             InstOp::Out => format!("{}Out {}", indent(lv), pointer),
             InstOp::In => format!("{}In {}", indent(lv), pointer),

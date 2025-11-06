@@ -11,6 +11,7 @@ pub enum InstOp {
     Add(u8),
     Set(u8),
 
+    Shift(isize),
     MulAndSetZero(Vec<(isize, u8)>),
 
     In,
@@ -101,6 +102,11 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                 }
                 if !is_ptr_stable {
                     pointer = start_ptr;
+                    if end - start == 1 {
+                        insts.truncate(start);
+                        push_inst!(InstOp::Shift(end_ptr - start_ptr));
+                        continue;
+                    }
                 } else if is_flat {
                     is_flat = false;
                     let mut dests = insts[(start+1)..end].to_vec();
