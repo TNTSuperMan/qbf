@@ -16,8 +16,8 @@ pub enum InstOp {
     In,
     Out,
 
-    LoopStart(usize, bool), // cond, is_ptr_stable
-    LoopEnd(usize, bool),
+    LoopStart(usize), // end
+    LoopEnd(usize, Option<isize>), // start, diff
 }
 
 pub fn parse(code: &str) -> Vec<Instruction> {
@@ -82,7 +82,7 @@ pub fn parse(code: &str) -> Vec<Instruction> {
             '[' => {
                 loop_stack.push(insts.len());
                 is_flat = true;
-                push_inst!(InstOp::LoopStart(usize::MAX, false));
+                push_inst!(InstOp::LoopStart(usize::MAX));
             }
             ']' => {
                 let start = loop_stack.pop().unwrap();
@@ -119,8 +119,12 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                     }
                 }
 
-                insts[start].opcode = InstOp::LoopStart(end, is_ptr_stable);
-                insts.push(Instruction { pointer: end_ptr, opcode: InstOp::LoopEnd(start, is_ptr_stable) });
+                insts[start].opcode = InstOp::LoopStart(end);
+                insts.push(Instruction { pointer: end_ptr, opcode: InstOp::LoopEnd(start, if is_ptr_stable {
+                    None
+                } else {
+                    Some(end_ptr - start_ptr)
+                })});
             }
             _ => {}
         }

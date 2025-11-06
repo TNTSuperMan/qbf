@@ -42,18 +42,14 @@ pub fn run(vm: &mut BFVM, insts: Vec<Instruction>) {
                 vm.output.as_ref()(vm.memory[ptr]);
             }
 
-            InstOp::LoopStart(end, _is_ptr_stable) => {
+            InstOp::LoopStart(end) => {
                 if vm.memory[(ptr + offset) as usize] == 0 {
                     vm.pc = *end;
                 }
             }
-            InstOp::LoopEnd(start, is_ptr_stable) => {
-                if !is_ptr_stable {
-                    if let Instruction { opcode: InstOp::LoopStart(_, _), pointer } = insts[*start] {
-                        offset += ptr - pointer;
-                    } else {
-                        unreachable!("対になってるループ先頭がLoopStart以外な訳がないよね");
-                    }
+            InstOp::LoopEnd(start, diff) => {
+                if let Some(d) = diff {
+                    offset += d;
                 }
                 vm.pc = *start;
                 continue; // LoopStartに処理を飛ばすため、PCインクリメントを回避

@@ -23,8 +23,8 @@ pub fn instructions_to_string(instructions: Vec<Instruction>) -> String {
             InstOp::MulAndSetZero(dests) => format!("{}MulAndSetZero [{}] => {}", indent(lv),pointer,dests_to_string(dests)),
             InstOp::Out => format!("{}Out {}", indent(lv), pointer),
             InstOp::In => format!("{}In {}", indent(lv), pointer),
-            InstOp::LoopStart(addr, is_stable) => { let i = indent(lv); lv += 1; format!("{}loop {{ -> {} [{}] {}", i, addr, pointer, if is_stable { "STABLE" } else { "unstable" }) },
-            InstOp::LoopEnd(addr, is_stable) => { lv -= 1; format!("{}}} <- {} [{}] {}", indent(lv), addr, pointer, if is_stable { "STABLE" } else { "unstable" }) },
+            InstOp::LoopStart(start) => { let i = indent(lv); lv += 1; format!("{}loop {{ -> {} [{}]", i, start, pointer) },
+            InstOp::LoopEnd(end, diff) => { lv -= 1; format!("{}}} <- {} [{}] {}", indent(lv), end, pointer, if let Some(d) = diff { format!("unstable, {}", d) } else { "STABLE".to_string() }) },
         });
     }
     strings.join("\n")
