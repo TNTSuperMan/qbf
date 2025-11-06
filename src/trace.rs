@@ -17,7 +17,7 @@ pub fn instructions_to_string(instructions: Vec<Instruction>) -> String {
     let mut lv: usize = 0;
     for inst in instructions {
         strings.push(match inst {
-            Instruction::Breakpoint => format!("{}@BREAKPOINT!", indent(lv)),
+            Instruction::Breakpoint(ptr) => format!("{}@BREAKPOINT! at {}", indent(lv), ptr),
             Instruction::Add(ptr, val) => format!("{}[{}] += {}", indent(lv), ptr, val),
             Instruction::Set(ptr, val) => format!("{}[{}] = {}", indent(lv), ptr, val),
             Instruction::MulAndSetZero(src, dests) => format!("{}MulAndSetZero [{}] => {}", indent(lv),src,dests_to_string(dests)),
