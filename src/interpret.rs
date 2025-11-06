@@ -5,11 +5,19 @@ pub fn run(vm: &mut BFVM, instrs: Vec<Instruction>, _hints: Hints) {
     let len = instrs.len();
 
     while vm.pc < len {
-        println!("PC: {} offset: {}", vm.pc, offset);
         match &instrs[vm.pc] {
             Instruction::Breakpoint => {
                 // 標準出力と分けるだけ、エラーじゃない
-                eprint!("PC: {}, ", vm.pc);
+                eprint!("PC: {}, PTR: {}, ", vm.pc, offset + match instrs[vm.pc-1] {
+                    Instruction::Breakpoint => 0,
+                    Instruction::Add(p, _) => p,
+                    Instruction::Set(p, _) => p,
+                    Instruction::MulAndSetZero(p, _) => p,
+                    Instruction::In(p) => p,
+                    Instruction::Out(p) => p,
+                    Instruction::LoopStart(_, p, _) => p,
+                    Instruction::LoopEnd(_, p, _) => p,
+                });
                 for i in 0..50 {
                     eprint!("{:02x} ", vm.memory[i]);
                 }
