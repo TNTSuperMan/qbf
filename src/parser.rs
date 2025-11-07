@@ -12,7 +12,8 @@ pub enum InstOp {
     Set(u8),
 
     Shift(isize),
-    MulAndSetZero(isize, Vec<(isize, u8)>),
+    MulAndSetZero(Vec<(isize, u8)>),
+    MulAndSetZeroTo(isize, Vec<(isize, u8)>),
 
     In,
     Out,
@@ -122,20 +123,24 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                                 dests.remove(decrement_pos);
                                 insts.truncate(start);
 
-                                if let Some(Instruction { pointer: last_ptr, opcode: InstOp::MulAndSetZero(_, last_dests) }) = insts.last_mut() {
+                                if let Instruction { pointer: source, opcode: InstOp::MulAndSetZero(last_dests) } = insts.last().unwrap().clone() {
                                     if let Some(to_ldests_at) = last_dests.iter().position(|&dest| dest == (pointer, 1)) {
-                                        if let Some(from_dests_at) = dests.iter().position(|&dest| dest == (*last_ptr, 1)) {
-                                            last_dests.remove(to_ldests_at);
+                                        if let Some(from_dests_at) = dests.iter().position(|&dest| dest == (source, 1)) {
                                             dests.remove(from_dests_at);
-                                            for dest in dests { last_dests.push(*dest); }
+                                            for (i, dest) in last_dests.iter().enumerate() {
+                                                if i != to_ldests_at {
+                                                    dests.push(*dest);
+                                                }
+                                            }
                                             
-                                            *last_ptr = pointer;
+                                            insts.truncate(start - 1);
+                                            push_inst!(InstOp::MulAndSetZeroTo(source, dests.to_vec()));
                                             continue;
                                         }
                                     }
                                 }
 
-                                push_inst!(InstOp::MulAndSetZero(pointer, dests.to_vec()));
+                                push_inst!(InstOp::MulAndSetZero(dests.to_vec()));
                                 continue;
                             }
                         }

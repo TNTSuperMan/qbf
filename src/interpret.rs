@@ -21,26 +21,24 @@ pub fn step(vm: &mut BFVM) {
                 vm.offset += diff;
             }
         }
-        InstOp::MulAndSetZero(source, dests) => {
-            if *pointer == *source {
-                let source_val = vm.memory[ptr];
-                if source_val != 0 {
-                    for (dest_p, m) in dests {
-                        let dest_ptr = (*dest_p + vm.offset) as usize;
-                        vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
-                    }
-                    vm.memory[ptr] = 0;
+        InstOp::MulAndSetZero(dests) => {
+            let source_val = vm.memory[ptr];
+            if source_val != 0 {
+                for (dest_p, m) in dests {
+                    let dest_ptr = (*dest_p + vm.offset) as usize;
+                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
                 }
-            } else {
-                let source_abs = (source + vm.offset) as usize;
-                let source_val = vm.memory[source_abs] + vm.memory[ptr];
-                if source_val != 0 {
-                    for (dest_p, m) in dests {
-                        let dest_ptr = (*dest_p + vm.offset) as usize;
-                        vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
-                    }
-                    vm.memory[ptr] = 0;
+                vm.memory[ptr] = 0;
+            }
+        }
+        InstOp::MulAndSetZeroTo(source, dests) => {
+            let source_val = vm.memory[(source + vm.offset) as usize].wrapping_add(vm.memory[ptr]);
+            if source_val != 0 {
+                for (dest_p, m) in dests {
+                    let dest_ptr = (*dest_p + vm.offset) as usize;
+                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
                 }
+                vm.memory[ptr] = 0;
             }
         }
 
