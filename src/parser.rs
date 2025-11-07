@@ -12,7 +12,7 @@ pub enum InstOp {
     Set(u8),
 
     Shift(isize),
-    MulAndSetZero(Vec<(isize, u8)>),
+    MulAndSetZero(isize, Vec<(isize, u8)>),
 
     In,
     Out,
@@ -109,19 +109,35 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                     }
                 } else if is_flat {
                     is_flat = false;
-                    let mut dests = insts[(start+1)..end].to_vec();
-                    if let Some(decrement_pos) = dests.iter().position(|dest| if let Instruction { pointer: dest_ptr, opcode: InstOp::Add(255) } = dest { *dest_ptr == pointer } else { false }) {
-                        dests.remove(decrement_pos);
-                        if dests.iter().all(|inst| if let InstOp::Add(_) = inst.opcode { true } else { false }) {
-                            insts.truncate(start);
-                            push_inst!(InstOp::MulAndSetZero(dests.iter().map(|dest| {
-                                if let Instruction { pointer, opcode: InstOp::Add(val) } = dest {
-                                    (*pointer, *val)
-                                } else {
-                                    unreachable!("InstOp::Addしかないことを上のiter().all()で検証したはず");
+                    let mut dests_res: Result<Vec<(isize, u8)>, ()> = insts[(start+1)..end].iter().map(|dest| {
+                        if let Instruction { pointer, opcode: InstOp::Add(val) } = dest {
+                            Ok((*pointer, *val))
+                        } else {
+                            Err(())
+                        }
+                    }).collect();
+                    if let Ok(dests) = dests_res.as_mut() {
+                        if let Some(decrement_pos) = dests.iter().position(|&dest| dest == (pointer, 255)) {
+                            if !dests.iter().all(|&(ptr, _)| ptr == pointer) {
+                                dests.remove(decrement_pos);
+                                insts.truncate(start);
+
+                                if let Some(Instruction { pointer: last_ptr, opcode: InstOp::MulAndSetZero(_, last_dests) }) = insts.last_mut() {
+                                    if let Some(to_ldests_at) = last_dests.iter().position(|&dest| dest == (pointer, 1)) {
+                                        if let Some(from_dests_at) = dests.iter().position(|&dest| dest == (*last_ptr, 1)) {
+                                            last_dests.remove(to_ldests_at);
+                                            dests.remove(from_dests_at);
+                                            for dest in dests { last_dests.push(*dest); }
+                                            
+                                            *last_ptr = pointer;
+                                            continue;
+                                        }
+                                    }
                                 }
-                            }).collect()));
-                            continue;
+
+                                push_inst!(InstOp::MulAndSetZero(pointer, dests.to_vec()));
+                                continue;
+                            }
                         }
                     }
                 }

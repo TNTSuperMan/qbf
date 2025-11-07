@@ -21,7 +21,7 @@ pub fn instructions_to_string(instructions: Vec<Instruction>) -> String {
             InstOp::Add(val) => format!("{}[{}] += {}", indent(lv), pointer, val),
             InstOp::Set(val) => format!("{}[{}] = {}", indent(lv), pointer, val),
             InstOp::Shift(diff) => format!("{}Shift({})", indent(lv), diff),
-            InstOp::MulAndSetZero(dests) => format!("{}MulAndSetZero [{}] => {}", indent(lv),pointer,dests_to_string(dests)),
+            InstOp::MulAndSetZero(source, dests) => format!("{}MulAndSetZero [{}] = 0, [{}] => {}", indent(lv),pointer,source,dests_to_string(dests)),
             InstOp::Out => format!("{}Out {}", indent(lv), pointer),
             InstOp::In => format!("{}In {}", indent(lv), pointer),
             InstOp::LoopStart(start) => { let i = indent(lv); lv += 1; format!("{}loop {{ -> {} [{}]", i, start, pointer) },
