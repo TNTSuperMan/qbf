@@ -4,6 +4,7 @@ use crate::{trace::instructions_to_string, vm::BFVM};
 
 mod interpret;
 mod io;
+mod jit;
 mod parser;
 mod trace;
 mod vm;

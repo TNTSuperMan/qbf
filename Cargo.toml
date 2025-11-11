@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+cranelift = "0.120.2"
+cranelift-jit = "0.120.2"
+cranelift-module = "0.120.2"
 
 [profile.release]
 opt-level = 3
