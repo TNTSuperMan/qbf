@@ -2,7 +2,7 @@ use crate::{interpret::run, parser::parse};
 
 mod interpret;
 mod parser;
-mod trace;
+#[cfg(feature = "debug")] mod trace;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
