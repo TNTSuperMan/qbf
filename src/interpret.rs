@@ -1,70 +1,82 @@
-use crate::{io::{input, output}, parser::{InstOp, Instruction}, vm::BFVM};
+use std::io::{Write, stdout};
 
-pub fn step(vm: &mut BFVM) {
-    let Instruction { opcode, pointer } = &vm.insts[vm.pc];
-    let ptr = (pointer + vm.offset) as usize;
-    match opcode {
-        InstOp::Breakpoint => {
-            // 標準出力と分けるだけ、エラーじゃない
-            eprintln!("PC: {}, PTR: {}, ", vm.pc, ptr);
-        }
+use crate::{parser::{InstOp, Instruction}};
 
-        InstOp::Add(val) => {
-            vm.memory[ptr] = vm.memory[ptr].wrapping_add(*val);
+pub fn run(insts: Vec<Instruction>, size: usize) {
+    let mut stdout = stdout().lock();
+    let insts_len = insts.len();
+    let mut pc: usize = 0;
+    let mut offset: isize = 0;
+    let mut memory: Vec<u8> = vec![0; size];
+    loop {
+        if pc >= insts_len {
+            break;
         }
-        InstOp::Set(val) => {
-            vm.memory[ptr] = *val;
-        }
-
-        InstOp::Shift(diff) => {
-            while vm.memory[(pointer + vm.offset) as usize] != 0 {
-                vm.offset += diff;
+        let Instruction { opcode, pointer } = &insts[pc];
+        let ptr = (pointer + offset) as usize;
+        match opcode {
+            InstOp::Breakpoint => {
+                // 標準出力と分けるだけ、エラーじゃない
+                eprintln!("PC: {}, PTR: {}, ", pc, ptr);
             }
-        }
-        InstOp::MulAndSetZero(dests) => {
-            let source_val = vm.memory[ptr];
-            if source_val != 0 {
-                for (dest_p, m) in dests {
-                    let dest_ptr = (*dest_p + vm.offset) as usize;
-                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
+
+            InstOp::Add(val) => {
+                memory[ptr] = memory[ptr].wrapping_add(*val);
+            }
+            InstOp::Set(val) => {
+                memory[ptr] = *val;
+            }
+
+            InstOp::Shift(diff) => {
+                while memory[(pointer + offset) as usize] != 0 {
+                    offset += diff;
                 }
-                vm.memory[ptr] = 0;
             }
-        }
-        InstOp::MulAndSetZeroTo(source, dests) => {
-            let source_val = vm.memory[(source + vm.offset) as usize].wrapping_add(vm.memory[ptr]);
-            if source_val != 0 {
-                for (dest_p, m) in dests {
-                    let dest_ptr = (*dest_p + vm.offset) as usize;
-                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
+            InstOp::MulAndSetZero(dests) => {
+                let source_val = memory[ptr];
+                if source_val != 0 {
+                    for (dest_p, m) in dests {
+                        let dest_ptr = (dest_p + offset) as usize;
+                        memory[dest_ptr] = memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
+                    }
+                    memory[ptr] = 0;
                 }
-                vm.memory[ptr] = 0;
             }
-        }
+            InstOp::MulAndSetZeroTo(source, dests) => {
+                let source_val = memory[(source + offset) as usize].wrapping_add(memory[ptr]);
+                if source_val != 0 {
+                    for (dest_p, m) in dests {
+                        let dest_ptr = (dest_p + offset) as usize;
+                        memory[dest_ptr] = memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
+                    }
+                    memory[ptr] = 0;
+                }
+            }
 
-        InstOp::In => {
-            vm.memory[ptr] = input();
-        }
-        InstOp::Out => {
-            output(vm.memory[ptr]);
-        }
+            InstOp::In => {
+                memory[ptr] = 0; // TODO
+            }
+            InstOp::Out => {
+                stdout.write(&[memory[ptr]]).unwrap();
+            }
 
-        InstOp::LoopStart(end) => {
-            if vm.memory[ptr] == 0 {
-                vm.pc = *end;
+            InstOp::LoopStart(end) => {
+                if memory[ptr] == 0 {
+                    pc = *end;
+                }
+            }
+            InstOp::LoopEnd(start) => {
+                if memory[ptr] != 0 {
+                    pc = *start;
+                }
+            }
+            InstOp::LoopEndWithOffset(start, off) => {
+                if memory[ptr] != 0 {
+                    pc = *start;
+                }
+                offset += off;
             }
         }
-        InstOp::LoopEnd(start) => {
-            if vm.memory[ptr] != 0 {
-                vm.pc = *start;
-            }
-        }
-        InstOp::LoopEndWithOffset(start, off) => {
-            if vm.memory[ptr] != 0 {
-                vm.pc = *start;
-            }
-            vm.offset += off;
-        }
+        pc += 1;
     }
-    vm.pc += 1;
 }

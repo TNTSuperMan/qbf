@@ -1,12 +1,10 @@
 use std::fs;
 
-use crate::{trace::instructions_to_string, vm::BFVM};
+use crate::{interpret::run, parser::parse, trace::instructions_to_string};
 
 mod interpret;
-mod io;
 mod parser;
 mod trace;
-mod vm;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -17,12 +15,9 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                let mut vm = BFVM::new(
-                    &code,
-                    65536,
-                );
-                fs::write("./box/instructions", instructions_to_string(vm.insts.clone())).expect("failed to write");
-                vm.run();
+                let insts = parse(&code);
+                fs::write("./box/instructions", instructions_to_string(insts.clone())).expect("failed to write");
+                run(insts, 65536);
             }
         }
     } else {
