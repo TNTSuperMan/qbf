@@ -21,6 +21,8 @@ pub enum InstOp {
     LoopStart(usize), // end
     LoopEnd(usize), // start
     LoopEndWithOffset(usize, isize), // start, diff
+
+    End,
 }
 
 pub fn parse(code: &str) -> Vec<Instruction> {
@@ -157,6 +159,8 @@ pub fn parse(code: &str) -> Vec<Instruction> {
             _ => {}
         }
     }
+
+    insts.push(Instruction { pointer, opcode: InstOp::End });
 
     insts
 }

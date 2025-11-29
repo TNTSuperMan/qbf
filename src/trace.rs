@@ -28,6 +28,7 @@ pub fn instructions_to_string(instructions: Vec<Instruction>) -> String {
             InstOp::LoopStart(start) => { let i = indent(lv); lv += 1; format!("{}loop {{ -> {} [{}]", i, start, pointer) },
             InstOp::LoopEnd(end) => { lv -= 1; format!("{}}} <- {} [{}] STABLE", indent(lv), end, pointer) },
             InstOp::LoopEndWithOffset(end, off) => { lv -= 1; format!("{}}} <- {} [{}] unstable({})", indent(lv), end, pointer, off) },
+            InstOp::End => format!("{}End", indent(lv)),
         });
     }
     strings.join("\n")

@@ -4,14 +4,10 @@ use crate::{parser::{InstOp, Instruction}};
 
 pub fn run(insts: Vec<Instruction>, size: usize) {
     let mut stdout = stdout().lock();
-    let insts_len = insts.len();
     let mut pc: usize = 0;
     let mut offset: isize = 0;
     let mut memory: Vec<u8> = vec![0; size];
     loop {
-        if pc >= insts_len {
-            break;
-        }
         let Instruction { opcode, pointer } = &insts[pc];
         let ptr = (pointer + offset) as usize;
         match opcode {
@@ -75,6 +71,9 @@ pub fn run(insts: Vec<Instruction>, size: usize) {
                     pc = *start;
                 }
                 offset += off;
+            }
+            InstOp::End => {
+                break;
             }
         }
         pc += 1;
