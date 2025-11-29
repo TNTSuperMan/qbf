@@ -1,6 +1,4 @@
-use std::fs;
-
-use crate::{interpret::run, parser::parse, trace::instructions_to_string};
+use crate::{interpret::run, parser::parse};
 
 mod interpret;
 mod parser;
@@ -16,7 +14,11 @@ fn main() {
             }
             Ok(code) => {
                 let insts = parse(&code);
-                fs::write("./box/instructions", instructions_to_string(insts.clone())).expect("failed to write");
+                #[cfg(feature = "debug")] {
+                    use crate::trace::instructions_to_string;
+                    use std::fs;
+                    fs::write("./box/instructions", instructions_to_string(insts.clone())).expect("failed to write");
+                }
                 run(insts, 65536);
             }
         }
