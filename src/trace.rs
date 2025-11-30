@@ -45,6 +45,7 @@ pub fn instructions_to_string(instructions: Vec<Instruction>, m: OperationCountM
             InstOp::Add(val) => format!("[{}] += {}", pointer, val),
             InstOp::Set(val) => format!("[{}] = {}", pointer, val),
             InstOp::Shift(diff) => format!("Shift({})", diff),
+            InstOp::Mul(source, val) => format!("[{}] += [{}] * {}", pointer, source, val),
             InstOp::MulAndSetZero(dests) => format!("MulAndSetZero [{}] => {}", pointer,dests_to_string(dests.clone())),
             InstOp::MulAndSetZeroTo(source, dests) => format!("MulAndSetZeroTo [{}] = 0, [{}] => {}", pointer,source,dests_to_string(dests.clone())),
             InstOp::Out => format!("Out {}", pointer),

@@ -12,6 +12,7 @@ pub enum InstOp {
     Set(u8),
 
     Shift(isize),
+    Mul(isize, u8),
     MulAndSetZero(Vec<(isize, u8)>),
     MulAndSetZeroTo(isize, Vec<(isize, u8)>),
 
@@ -136,13 +137,19 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                                             }
                                             
                                             insts.truncate(start - 1);
-                                            push_inst!(InstOp::MulAndSetZeroTo(source, dests.to_vec()));
+                                            for (ptr, val) in dests {
+                                                insts.push(Instruction { pointer: *ptr, opcode: InstOp::Mul(source, *val) });
+                                            }
+                                            insts.push(Instruction { pointer, opcode: InstOp::Set(0) });
                                             continue;
                                         }
                                     }
                                 }
 
-                                push_inst!(InstOp::MulAndSetZero(dests.to_vec()));
+                                for (ptr, val) in dests {
+                                    insts.push(Instruction { pointer: *ptr, opcode: InstOp::Mul(pointer, *val) });
+                                }
+                                push_inst!(InstOp::Set(0));
                                 continue;
                             }
                         }

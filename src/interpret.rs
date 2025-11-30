@@ -31,6 +31,9 @@ pub fn run(insts: Vec<Instruction>, size: usize, map: &mut OperationCountMap) {
                     offset = offset.wrapping_add(*diff);
                 }
             }
+            InstOp::Mul(source, val) => {
+                memory[ptr] = memory[ptr].wrapping_add(val.wrapping_mul(memory[offset.wrapping_add(*source) as usize]));
+            }
             InstOp::MulAndSetZero(dests) => {
                 let source_val = memory[ptr];
                 if source_val != 0 {
