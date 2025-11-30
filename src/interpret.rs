@@ -53,14 +53,6 @@ pub fn run(insts: Vec<Instruction>, size: usize, map: &mut OperationCountMap) ->
                     offset = offset.wrapping_add(*diff);
                 }
             }
-            InstOp::Mul(source, val) => {
-                let mul_res = get!(ptr)?.wrapping_add(
-                    val.wrapping_mul(
-                        get!(offset.wrapping_add(*source))?
-                    )
-                );
-                set!(ptr, mul_res)?;
-            }
             InstOp::MulAndSetZero(dests) => {
                 let source_val = get!(ptr)?;
                 if source_val != 0 {
