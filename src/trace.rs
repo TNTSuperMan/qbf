@@ -40,6 +40,7 @@ pub fn instructions_to_string(instructions: Vec<Instruction>, m: OperationCountM
         if let InstOp::LoopEndWithOffset(_, _) = opcode {
             lv -= 1;
         }
+        let ind = indent(lv);
         let t = match opcode {
             InstOp::Breakpoint => format!("@BREAKPOINT! at {}", pointer),
             InstOp::Add(val) => format!("[{}] += {}", pointer, val),
@@ -56,10 +57,10 @@ pub fn instructions_to_string(instructions: Vec<Instruction>, m: OperationCountM
             InstOp::End => format!("{}End", indent(lv)),
         };
         #[cfg(feature = "debug")] {
-            strings.push(format!("{}\t{}{}", ((m.0[i] as f64).ln() as usize), indent(lv), t));
+            strings.push(format!("{}\t{}{}", ((m.0[i] as f64).ln() as usize), ind, t));
         }
         #[cfg(not(feature = "debug"))] {
-            strings.push(format!("\t{}{}", indent(lv), t));
+            strings.push(format!("\t{}{}", ind, t));
         }
     }
     strings.join("\n")
