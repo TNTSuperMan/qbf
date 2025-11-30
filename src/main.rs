@@ -15,7 +15,9 @@ fn main() {
             Ok(code) => {
                 let insts = parse(&code);
                 let mut v = OperationCountMap::new(insts.len());
-                run(insts.clone(), 65536, &mut v);
+                if let Err(err) = run(insts.clone(), 65536, &mut v) {
+                    eprintln!("{}", err);
+                }
                 #[cfg(feature = "debug")] {
                     use crate::trace::instructions_to_string;
                     use std::fs;
