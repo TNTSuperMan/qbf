@@ -1,13 +1,16 @@
 use std::io::{Write, stdout};
 
-use crate::{parser::{InstOp, Instruction}};
+use crate::{parser::{InstOp, Instruction}, trace::OperationCountMap};
 
-pub fn run(insts: Vec<Instruction>, size: usize) {
+pub fn run(insts: Vec<Instruction>, size: usize, map: &mut OperationCountMap) {
     let mut stdout = stdout().lock();
     let mut pc: usize = 0;
     let mut offset: isize = 0;
     let mut memory: Vec<u8> = vec![0; size];
     loop {
+        #[cfg(feature = "debug")] {
+            map.0[pc] += 1;
+        }
         let Instruction { opcode, pointer } = &insts[pc];
         let ptr = offset.wrapping_add(*pointer) as usize;
         match opcode {

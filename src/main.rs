@@ -1,8 +1,8 @@
-use crate::{interpret::run, parser::parse};
+use crate::{interpret::run, parser::parse, trace::OperationCountMap};
 
 mod interpret;
 mod parser;
-#[cfg(feature = "debug")] mod trace;
+mod trace;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -14,12 +14,13 @@ fn main() {
             }
             Ok(code) => {
                 let insts = parse(&code);
+                let mut v = OperationCountMap::new(insts.len());
+                run(insts.clone(), 65536, &mut v);
                 #[cfg(feature = "debug")] {
                     use crate::trace::instructions_to_string;
                     use std::fs;
-                    fs::write("./box/instructions", instructions_to_string(insts.clone())).expect("failed to write");
+                    fs::write("./box/instructions", instructions_to_string(insts, v)).expect("failed to write");
                 }
-                run(insts, 65536);
             }
         }
     } else {
