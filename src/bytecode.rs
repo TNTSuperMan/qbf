@@ -21,7 +21,7 @@ pub enum OpCode {
     Set,
 
     Shift, // ptr: shift source, ptr3: shift size
-    MulStart,
+    MulStart, // addr: skip addr
     Mul,
 
     In,
@@ -91,7 +91,7 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     val: 0,
                     ptr: ir.pointer,
                     ptr2: 0,
-                    addr: 0,
+                    addr: bytecodes.len() + dests.len() + 2,
                     padding1: 0,
                     padding2: 0,
                 });
@@ -122,7 +122,7 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     val: 0,
                     ptr: ir.pointer,
                     ptr2: 0,
-                    addr: 0,
+                    addr: bytecodes.len() + dests.len() + 2,
                     padding1: 0,
                     padding2: 0,
                 });
