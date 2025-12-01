@@ -1,12 +1,13 @@
 use std::{io::{Write, stdout}};
 
-use crate::{parser::{InstOp, Instruction}, trace::OperationCountMap};
+use crate::{bytecode::{Bytecode, OpCode}, trace::OperationCountMap};
 
-pub fn run(insts: Vec<Instruction>, size: usize, map: &mut OperationCountMap) -> Result<(), String> {
+pub fn run(insts: Vec<Bytecode>, size: usize, map: &mut OperationCountMap) -> Result<(), String> {
     let mut stdout = stdout().lock();
     let mut pc: usize = 0;
     let mut offset: isize = 0;
     let mut memory: Vec<u8> = vec![0; size];
+    let mut mul_cache: u8 = 0;
 
     macro_rules! get {
         ($index: expr) => {
@@ -32,73 +33,64 @@ pub fn run(insts: Vec<Instruction>, size: usize, map: &mut OperationCountMap) ->
         #[cfg(feature = "debug")] {
             map.0[pc] += 1;
         }
-        let Instruction { opcode, pointer } = &insts[pc];
-        let ptr = offset.wrapping_add(*pointer) as isize;
-        match opcode {
-            InstOp::Breakpoint => {
+        let bytecode = &insts[pc];
+        let ptr = offset.wrapping_add(bytecode.ptr) as isize;
+        match bytecode.opcode {
+            OpCode::Breakpoint => {
                 // 標準出力と分けるだけ、エラーじゃない
                 eprintln!("PC: {}, PTR: {}, ", pc, ptr);
             }
 
-            InstOp::Add(val) => {
-                let add_res = get!(ptr)?.wrapping_add(*val);
+            OpCode::Add => {
+                let add_res = get!(ptr)?.wrapping_add(bytecode.val);
                 set!(ptr, add_res)?;
             }
-            InstOp::Set(val) => {
-                set!(ptr, *val)?;
+            OpCode::Set => {
+                set!(ptr, bytecode.val)?;
             }
 
-            InstOp::Shift(diff) => {
-                while get!(offset.wrapping_add(*pointer))? != 0 {
-                    offset = offset.wrapping_add(*diff);
+            OpCode::Shift => {
+                while get!(offset.wrapping_add(bytecode.ptr))? != 0 {
+                    offset = offset.wrapping_add(bytecode.ptr2);
                 }
             }
-            InstOp::MulAndSetZero(dests) => {
-                let source_val = get!(ptr)?;
-                if source_val != 0 {
-                    for (dest_p, m) in dests {
-                        let dest_ptr = offset.wrapping_add(*dest_p);
-                        let dest_val = get!(dest_ptr)?.wrapping_add(source_val.wrapping_mul(*m));
-                        set!(dest_ptr, dest_val)?;
-                    }
-                    set!(ptr, 0)?;
-                }
+            OpCode::MulStart => {
+                mul_cache = get!(ptr)?;
             }
-            InstOp::MulAndSetZeroTo(source, dests) => {
-                let source_val = memory[offset.wrapping_add(*source) as usize].wrapping_add(get!(ptr)?);
-                if source_val != 0 {
-                    for (dest_p, m) in dests {
-                        let dest_ptr = offset.wrapping_add(*dest_p) as usize;
-                        memory[dest_ptr] = memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
-                    }
-                    set!(ptr, 0)?;
-                }
+            OpCode::Mul => {
+                let mul_val = get!(ptr)?.wrapping_add(
+                    mul_cache.wrapping_mul(bytecode.val)
+                );
+                set!(ptr, mul_val)?;
             }
 
-            InstOp::In => {
+            OpCode::In => {
                 set!(ptr, 0)?; // TODO
             }
-            InstOp::Out => {
+            OpCode::Out => {
                 stdout.write(&[get!(ptr)?]).unwrap();
             }
 
-            InstOp::LoopStart(end) => {
+            OpCode::LoopStart => {
                 if get!(ptr)? == 0 {
-                    pc = *end;
+                    pc = bytecode.addr as usize;
+                    continue;
                 }
             }
-            InstOp::LoopEnd(start) => {
+            OpCode::LoopEnd => {
                 if get!(ptr)? != 0 {
-                    pc = *start;
+                    pc = bytecode.addr as usize;
+                    continue;
                 }
             }
-            InstOp::LoopEndWithOffset(start, off) => {
+            OpCode::LoopEndWithOffset => {
+                offset = offset.wrapping_add(bytecode.ptr2);
                 if get!(ptr)? != 0 {
-                    pc = *start;
+                    pc = bytecode.addr as usize;
+                    continue;
                 }
-                offset = offset.wrapping_add(*off);
             }
-            InstOp::End => {
+            OpCode::End => {
                 return Ok(());
             }
         }
