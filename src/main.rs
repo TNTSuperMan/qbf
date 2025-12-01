@@ -17,12 +17,16 @@ fn main() {
                 let ir = parse_to_ir(&code);
                 let bytecodes = ir_to_bytecodes(ir);
                 let mut v = OperationCountMap::new(bytecodes.len());
-                if let Err(err) = run(bytecodes.clone(), 65536, &mut v) {
+                let result = run(bytecodes.clone(), 65536, &mut v);
+                if let Err(err) = result.clone() {
                     eprintln!("{}", err);
                 }
                 #[cfg(feature = "debug")] {
                     use crate::trace::instructions_to_string;
                     use std::fs;
+                    if let Ok(mem) = result {
+                        fs::write("./box/memory", mem).expect("failed to write");
+                    }
                     fs::write("./box/bytecodes", instructions_to_string(bytecodes, v)).expect("failed to write");
                 }
             }
