@@ -59,6 +59,8 @@ pub fn run(insts: Vec<Bytecode>, size: usize, map: &mut OperationCountMap) -> Re
                 if mul_cache == 0 {
                     pc = bytecode.addr;
                     continue;
+                } else {
+                    set!(offset.wrapping_add(bytecode.ptr2), 0)?;
                 }
             }
             OpCode::Mul => {
