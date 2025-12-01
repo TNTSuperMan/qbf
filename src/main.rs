@@ -15,15 +15,15 @@ fn main() {
             }
             Ok(code) => {
                 let ir = parse_to_ir(&code);
-                let mut v = OperationCountMap::new(ir.len());
                 let bytecodes = ir_to_bytecodes(ir);
-                if let Err(err) = run(bytecodes, 65536, &mut v) {
+                let mut v = OperationCountMap::new(bytecodes.len());
+                if let Err(err) = run(bytecodes.clone(), 65536, &mut v) {
                     eprintln!("{}", err);
                 }
                 #[cfg(feature = "debug")] {
                     use crate::trace::instructions_to_string;
                     use std::fs;
-                    //fs::write("./box/instructions", instructions_to_string(insts, v)).expect("failed to write");
+                    fs::write("./box/bytecodes", instructions_to_string(bytecodes, v)).expect("failed to write");
                 }
             }
         }

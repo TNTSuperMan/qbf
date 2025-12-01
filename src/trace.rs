@@ -1,4 +1,4 @@
-use crate::ir::{IROp, IR};
+use crate::{bytecode::{Bytecode, OpCode}};
 
 #[cfg(feature = "debug")]
 pub struct OperationCountMap (pub Vec<usize>);
@@ -18,42 +18,37 @@ impl OperationCountMap {
     }
 }
 
-fn dests_to_string(dests: Vec<(isize, u8)>) -> String {
-    let mut strs: Vec<String> = Vec::new();
-    for (ptr, val) in dests {
-        strs.push(format!("[{}]**{}", ptr, val))
-    }
-    strs.join(", ")
-}
-
 fn indent(level: usize) -> String {
     vec![""; level+1].join("    ")
 }
 
-pub fn instructions_to_string(instructions: Vec<IR>, m: OperationCountMap) -> String {
+pub fn instructions_to_string(bytecodes: Vec<Bytecode>, m: OperationCountMap) -> String {
     let mut strings: Vec<String> = Vec::new();
     let mut lv: usize = 0;
-    for (i, IR { opcode, pointer }) in instructions.iter().enumerate() {
-        if let IROp::LoopEnd(_) = opcode {
+    for (i, b) in bytecodes.iter().enumerate() {
+        if OpCode::LoopEnd == b.opcode {
             lv -= 1;
         }
-        if let IROp::LoopEndWithOffset(_, _) = opcode {
+        if OpCode::LoopEndWithOffset == b.opcode {
             lv -= 1;
         }
         let ind = indent(lv);
-        let t = match opcode {
-            IROp::Breakpoint => format!("@BREAKPOINT! at {}", pointer),
-            IROp::Add(val) => format!("[{}] += {}", pointer, val),
-            IROp::Set(val) => format!("[{}] = {}", pointer, val),
-            IROp::Shift(diff) => format!("Shift({})", diff),
-            IROp::MulAndSetZero(dests) => format!("MulAndSetZero [{}] => {}", pointer,dests_to_string(dests.clone())),
-            IROp::MulAndSetZeroTo(source, dests) => format!("MulAndSetZeroTo [{}] = 0, [{}] => {}", pointer,source,dests_to_string(dests.clone())),
-            IROp::Out => format!("Out {}", pointer),
-            IROp::In => format!("In {}", pointer),
-            IROp::LoopStart(start) => { lv += 1; format!("loop {{ -> {} [{}]", start, pointer) },
-            IROp::LoopEnd(end) => format!("}} <- {} [{}] STABLE", end, pointer),
-            IROp::LoopEndWithOffset(end, off) => format!("}} <- {} [{}] unstable({})", end, pointer, off) ,
-            IROp::End => format!("{}End", indent(lv)),
+        if OpCode::LoopStart == b.opcode {
+            lv += 1;
+        }
+        let t = match b.opcode {
+            OpCode::Breakpoint => format!("@BREAKPOINT at {}", b.ptr),
+            OpCode::Add => format!("[{}] += {}", b.ptr, b.val),
+            OpCode::Set => format!("[{}] = {}", b.ptr, b.val),
+            OpCode::Shift => format!("Shift {} from {}", b.ptr2, b.ptr),
+            OpCode::MulStart => format!("MulStart({})", b.ptr),
+            OpCode::Mul => format!("[{}] += m * {}", b.ptr, b.val),
+            OpCode::In => format!("[{}] = In()", b.ptr),
+            OpCode::Out => format!("Out([{}])", b.ptr),
+            OpCode::LoopStart => format!("loop([{}]) {{", b.ptr),
+            OpCode::LoopEnd => format!("}}"),
+            OpCode::LoopEndWithOffset => format!("}} offset({})", b.ptr2),
+            OpCode::End => format!("End"),
         };
         #[cfg(feature = "debug")] {
             strings.push(format!("{}\t{}{}", ((m.0[i] as f64).ln() as usize), ind, t));

@@ -1,5 +1,6 @@
 use crate::ir::{IR, IROp};
 
+#[derive(Clone)]
 pub struct Bytecode {
     pub opcode: OpCode /* u8 */,
     pub val: u8,
@@ -11,6 +12,7 @@ pub struct Bytecode {
     padding2: u16,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub enum OpCode {
     Breakpoint,
