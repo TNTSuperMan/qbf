@@ -8,8 +8,8 @@ pub struct Bytecode {
     pub ptr2: isize,
     pub addr: usize,
 
-    padding1: u32,
-    padding2: u16,
+    _padding1: u32,
+    _padding2: u16,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -47,8 +47,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
             IROp::Add(val) => {
@@ -58,8 +58,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
             IROp::Set(val) => {
@@ -69,8 +69,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
             
@@ -81,8 +81,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: s,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
             IROp::MulAndSetZero(dests) => {
@@ -92,8 +92,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: bytecodes.len() + dests.len() + 2,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
                 for (ptr, val) in dests {
                     bytecodes.push(Bytecode {
@@ -102,8 +102,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                         ptr,
                         ptr2: 0,
                         addr: 0,
-                        padding1: 0,
-                        padding2: 0,
+                        _padding1: 0,
+                        _padding2: 0,
                     });
                 }
                 bytecodes.push(Bytecode {
@@ -112,19 +112,19 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
-            IROp::MulAndSetZeroTo(to, dests) => {
+            IROp::MulAndSetZeroTo(source, dests) => {
                 bytecodes.push(Bytecode {
                     opcode: OpCode::MulStart,
                     val: 0,
-                    ptr: ir.pointer,
+                    ptr: source,
                     ptr2: 0,
                     addr: bytecodes.len() + dests.len() + 2,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
                 for (ptr, val) in dests {
                     bytecodes.push(Bytecode {
@@ -133,18 +133,18 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                         ptr,
                         ptr2: 0,
                         addr: 0,
-                        padding1: 0,
-                        padding2: 0,
+                        _padding1: 0,
+                        _padding2: 0,
                     });
                 }
                 bytecodes.push(Bytecode {
                     opcode: OpCode::Set,
                     val: 0,
-                    ptr: to,
+                    ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
 
@@ -155,8 +155,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
             IROp::Out => {
@@ -166,8 +166,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
 
@@ -179,8 +179,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: usize::MAX,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
             IROp::LoopEnd(_start) => {
@@ -193,8 +193,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: start + 1,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
             IROp::LoopEndWithOffset(_start, offset) => {
@@ -207,8 +207,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: offset,
                     addr: start + 1,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
 
@@ -219,8 +219,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
-                    padding1: 0,
-                    padding2: 0,
+                    _padding1: 0,
+                    _padding2: 0,
                 });
             }
         }
