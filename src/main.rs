@@ -1,12 +1,9 @@
-use std::fs;
-
-use crate::{trace::instructions_to_string, vm::BFVM};
+use crate::{bytecode::ir_to_bytecodes, interpret::run, ir::parse_to_ir, trace::OperationCountMap};
 
 mod interpret;
-mod io;
-mod parser;
+mod ir;
+mod bytecode;
 mod trace;
-mod vm;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -17,12 +14,21 @@ fn main() {
                 eprintln!("Error: {}", e);
             }
             Ok(code) => {
-                let mut vm = BFVM::new(
-                    &code,
-                    65536,
-                );
-                fs::write("./box/instructions", instructions_to_string(vm.insts.clone())).expect("failed to write");
-                vm.run();
+                let ir = parse_to_ir(&code);
+                let bytecodes = ir_to_bytecodes(ir);
+                let mut v = OperationCountMap::new(bytecodes.len());
+                let result = run(bytecodes.clone(), 65536, &mut v);
+                if let Err(err) = result.clone() {
+                    eprintln!("{}", err);
+                }
+                #[cfg(feature = "debug")] {
+                    use crate::trace::instructions_to_string;
+                    use std::fs;
+                    if let Ok(mem) = result {
+                        fs::write("./box/memory", mem).expect("failed to write");
+                    }
+                    fs::write("./box/bytecodes", instructions_to_string(bytecodes, v)).expect("failed to write");
+                }
             }
         }
     } else {

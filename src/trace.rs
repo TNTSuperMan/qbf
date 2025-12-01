@@ -1,34 +1,61 @@
-use crate::parser::{InstOp, Instruction};
+use crate::{bytecode::{Bytecode, OpCode}};
 
-fn dests_to_string(dests: Vec<(isize, u8)>) -> String {
-    let mut strs: Vec<String> = Vec::new();
-    for (ptr, val) in dests {
-        strs.push(format!("[{}]**{}", ptr, val))
+#[cfg(feature = "debug")]
+pub struct OperationCountMap (pub Vec<usize>);
+#[cfg(feature = "debug")]
+impl OperationCountMap {
+    pub fn new(len: usize) -> OperationCountMap {
+        OperationCountMap(vec![0usize; len])
     }
-    strs.join(", ")
+}
+
+#[cfg(not(feature = "debug"))]
+pub struct OperationCountMap;
+#[cfg(not(feature = "debug"))]
+impl OperationCountMap {
+    pub fn new(_len: usize) -> OperationCountMap {
+        OperationCountMap
+    }
 }
 
 fn indent(level: usize) -> String {
     vec![""; level+1].join("    ")
 }
 
-pub fn instructions_to_string(instructions: Vec<Instruction>) -> String {
+pub fn instructions_to_string(bytecodes: Vec<Bytecode>, m: OperationCountMap) -> String {
     let mut strings: Vec<String> = Vec::new();
     let mut lv: usize = 0;
-    for Instruction { opcode, pointer } in instructions {
-        strings.push(match opcode {
-            InstOp::Breakpoint => format!("{}@BREAKPOINT! at {}", indent(lv), pointer),
-            InstOp::Add(val) => format!("{}[{}] += {}", indent(lv), pointer, val),
-            InstOp::Set(val) => format!("{}[{}] = {}", indent(lv), pointer, val),
-            InstOp::Shift(diff) => format!("{}Shift({})", indent(lv), diff),
-            InstOp::MulAndSetZero(dests) => format!("{}MulAndSetZero [{}] => {}", indent(lv),pointer,dests_to_string(dests)),
-            InstOp::MulAndSetZeroTo(source, dests) => format!("{}MulAndSetZeroTo [{}] = 0, [{}] => {}", indent(lv),pointer,source,dests_to_string(dests)),
-            InstOp::Out => format!("{}Out {}", indent(lv), pointer),
-            InstOp::In => format!("{}In {}", indent(lv), pointer),
-            InstOp::LoopStart(start) => { let i = indent(lv); lv += 1; format!("{}loop {{ -> {} [{}]", i, start, pointer) },
-            InstOp::LoopEnd(end) => { lv -= 1; format!("{}}} <- {} [{}] STABLE", indent(lv), end, pointer) },
-            InstOp::LoopEndWithOffset(end, off) => { lv -= 1; format!("{}}} <- {} [{}] unstable({})", indent(lv), end, pointer, off) },
-        });
+    for (i, b) in bytecodes.iter().enumerate() {
+        if OpCode::LoopEnd == b.opcode {
+            lv -= 1;
+        }
+        if OpCode::LoopEndWithOffset == b.opcode {
+            lv -= 1;
+        }
+        let ind = indent(lv);
+        if OpCode::LoopStart == b.opcode {
+            lv += 1;
+        }
+        let t = match b.opcode {
+            OpCode::Breakpoint => format!("@BREAKPOINT at {}", b.ptr),
+            OpCode::Add => format!("[{}] += {}", b.ptr, b.val),
+            OpCode::Set => format!("[{}] = {}", b.ptr, b.val),
+            OpCode::Shift => format!("Shift {} from {}", b.ptr2, b.ptr),
+            OpCode::MulStart => format!("m = [{}]", b.ptr),
+            OpCode::Mul => format!("[{}] += m * {}", b.ptr, b.val),
+            OpCode::In => format!("[{}] = In()", b.ptr),
+            OpCode::Out => format!("Out [{}]", b.ptr),
+            OpCode::LoopStart => format!("loop [{}] {{", b.ptr),
+            OpCode::LoopEnd => format!("}}"),
+            OpCode::LoopEndWithOffset => format!("}} offset({})", b.ptr2),
+            OpCode::End => format!("End"),
+        };
+        #[cfg(feature = "debug")] {
+            strings.push(format!("{}\t{}{}", ((m.0[i] as f64).ln() as usize), ind, t));
+        }
+        #[cfg(not(feature = "debug"))] {
+            strings.push(format!("\t{}{}", ind, t));
+        }
     }
     strings.join("\n")
 }

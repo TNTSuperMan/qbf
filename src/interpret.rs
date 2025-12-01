@@ -1,70 +1,103 @@
-use crate::{io::{input, output}, parser::{InstOp, Instruction}, vm::BFVM};
+use std::{io::{Write, stdout}};
 
-pub fn step(vm: &mut BFVM) {
-    let Instruction { opcode, pointer } = &vm.insts[vm.pc];
-    let ptr = (pointer + vm.offset) as usize;
-    match opcode {
-        InstOp::Breakpoint => {
-            // 標準出力と分けるだけ、エラーじゃない
-            eprintln!("PC: {}, PTR: {}, ", vm.pc, ptr);
-        }
+use crate::{bytecode::{Bytecode, OpCode}, trace::OperationCountMap};
 
-        InstOp::Add(val) => {
-            vm.memory[ptr] = vm.memory[ptr].wrapping_add(*val);
-        }
-        InstOp::Set(val) => {
-            vm.memory[ptr] = *val;
-        }
+pub fn run(insts: Vec<Bytecode>, size: usize, map: &mut OperationCountMap) -> Result<Vec<u8>, String> {
+    let mut stdout = stdout().lock();
+    let mut pc: usize = 0;
+    let mut offset: isize = 0;
+    let mut memory: Vec<u8> = vec![0; size];
+    let mut mul_cache: u8 = 0;
 
-        InstOp::Shift(diff) => {
-            while vm.memory[(pointer + vm.offset) as usize] != 0 {
-                vm.offset += diff;
+    macro_rules! get {
+        ($index: expr) => {
+            if let Some(value) = memory.get($index as usize) {
+                Ok(*value)
+            } else {
+                Err(format!("Out of range memory read. Address: {}, PC: {}", $index, pc))
             }
-        }
-        InstOp::MulAndSetZero(dests) => {
-            let source_val = vm.memory[ptr];
-            if source_val != 0 {
-                for (dest_p, m) in dests {
-                    let dest_ptr = (*dest_p + vm.offset) as usize;
-                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
-                }
-                vm.memory[ptr] = 0;
-            }
-        }
-        InstOp::MulAndSetZeroTo(source, dests) => {
-            let source_val = vm.memory[(source + vm.offset) as usize].wrapping_add(vm.memory[ptr]);
-            if source_val != 0 {
-                for (dest_p, m) in dests {
-                    let dest_ptr = (*dest_p + vm.offset) as usize;
-                    vm.memory[dest_ptr] = vm.memory[dest_ptr].wrapping_add(source_val.wrapping_mul(*m));
-                }
-                vm.memory[ptr] = 0;
-            }
-        }
-
-        InstOp::In => {
-            vm.memory[ptr] = input();
-        }
-        InstOp::Out => {
-            output(vm.memory[ptr]);
-        }
-
-        InstOp::LoopStart(end) => {
-            if vm.memory[ptr] == 0 {
-                vm.pc = *end;
-            }
-        }
-        InstOp::LoopEnd(start) => {
-            if vm.memory[ptr] != 0 {
-                vm.pc = *start;
-            }
-        }
-        InstOp::LoopEndWithOffset(start, off) => {
-            if vm.memory[ptr] != 0 {
-                vm.pc = *start;
-            }
-            vm.offset += off;
-        }
+        };
     }
-    vm.pc += 1;
+    macro_rules! set {
+        ($index: expr, $value: expr) => {
+            if let Some(mem) = memory.get_mut($index as usize) {
+                *mem = $value;
+                Ok(())
+            } else {
+                Err(format!("Out of range memory write. Address: {}, PC: {}", $index, pc))
+            }
+        };
+    }
+
+    loop {
+        #[cfg(feature = "debug")] {
+            map.0[pc] += 1;
+        }
+        let bytecode = &insts[pc];
+        let ptr = offset.wrapping_add(bytecode.ptr) as isize;
+        match bytecode.opcode {
+            OpCode::Breakpoint => {
+                // 標準出力と分けるだけ、エラーじゃない
+                eprintln!("PC: {}, PTR: {}, ", pc, ptr);
+            }
+
+            OpCode::Add => {
+                let add_res = get!(ptr)?.wrapping_add(bytecode.val);
+                set!(ptr, add_res)?;
+            }
+            OpCode::Set => {
+                set!(ptr, bytecode.val)?;
+            }
+
+            OpCode::Shift => {
+                while get!(offset.wrapping_add(bytecode.ptr))? != 0 {
+                    offset = offset.wrapping_add(bytecode.ptr2);
+                }
+            }
+            OpCode::MulStart => {
+                mul_cache = get!(ptr)?;
+                if mul_cache == 0 {
+                    pc = bytecode.addr;
+                    continue;
+                }
+            }
+            OpCode::Mul => {
+                let mul_val = get!(ptr)?.wrapping_add(
+                    mul_cache.wrapping_mul(bytecode.val)
+                );
+                set!(ptr, mul_val)?;
+            }
+
+            OpCode::In => {
+                set!(ptr, 0)?; // TODO
+            }
+            OpCode::Out => {
+                stdout.write(&[get!(ptr)?]).unwrap();
+            }
+
+            OpCode::LoopStart => {
+                if get!(ptr)? == 0 {
+                    pc = bytecode.addr as usize;
+                    continue;
+                }
+            }
+            OpCode::LoopEnd => {
+                if get!(ptr)? != 0 {
+                    pc = bytecode.addr as usize;
+                    continue;
+                }
+            }
+            OpCode::LoopEndWithOffset => {
+                offset = offset.wrapping_add(bytecode.ptr2);
+                if get!(ptr)? != 0 {
+                    pc = bytecode.addr as usize;
+                    continue;
+                }
+            }
+            OpCode::End => {
+                return Ok(memory);
+            }
+        }
+        pc = pc.wrapping_add(1);
+    }
 }

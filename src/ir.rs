@@ -1,11 +1,11 @@
 #[derive(Clone)]
-pub struct Instruction {
+pub struct IR {
     pub pointer: isize,
-    pub opcode: InstOp,
+    pub opcode: IROp,
 }
 
 #[derive(Clone)]
-pub enum InstOp {
+pub enum IROp {
     Breakpoint,
 
     Add(u8),
@@ -21,10 +21,12 @@ pub enum InstOp {
     LoopStart(usize), // end
     LoopEnd(usize), // start
     LoopEndWithOffset(usize, isize), // start, diff
+
+    End,
 }
 
-pub fn parse(code: &str) -> Vec<Instruction> {
-    let mut insts: Vec<Instruction> = Vec::new();
+pub fn parse_to_ir(code: &str) -> Vec<IR> {
+    let mut insts: Vec<IR> = Vec::new();
     let mut loop_stack: Vec<usize> = Vec::new();
     let mut pointer: isize = 0;
 
@@ -32,7 +34,7 @@ pub fn parse(code: &str) -> Vec<Instruction> {
 
     macro_rules! push_inst {
         ($opcode:expr) => {
-            insts.push(Instruction {
+            insts.push(IR {
                 pointer,
                 opcode: $opcode,
             })
@@ -41,34 +43,34 @@ pub fn parse(code: &str) -> Vec<Instruction> {
 
     for char in code.chars() {
         match char {
-            '#' => { push_inst!(InstOp::Breakpoint) }
+            '#' => { push_inst!(IROp::Breakpoint) }
             '+' => {
-                if let Some(Instruction { pointer: last_ptr, opcode }) = insts.last_mut() {
+                if let Some(IR { pointer: last_ptr, opcode }) = insts.last_mut() {
                     if *last_ptr == pointer {
-                        if let InstOp::Add(val) = opcode {
+                        if let IROp::Add(val) = opcode {
                             *val = val.wrapping_add(1);
                             continue;
-                        } else if let InstOp::Set(val) = opcode {
+                        } else if let IROp::Set(val) = opcode {
                             *val = val.wrapping_add(1);
                             continue;
                         }
                     }
                 }
-                push_inst!(InstOp::Add(1));
+                push_inst!(IROp::Add(1));
             }
             '-' => {
-                if let Some(Instruction { pointer: last_ptr, opcode }) = insts.last_mut() {
+                if let Some(IR { pointer: last_ptr, opcode }) = insts.last_mut() {
                     if *last_ptr == pointer {
-                        if let InstOp::Add(val) = opcode {
+                        if let IROp::Add(val) = opcode {
                             *val = val.wrapping_sub(1);
                             continue;
-                        } else if let InstOp::Set(val) = opcode {
+                        } else if let IROp::Set(val) = opcode {
                             *val = val.wrapping_sub(1);
                             continue;
                         }
                     }
                 }
-                push_inst!(InstOp::Add(255));
+                push_inst!(IROp::Add(255));
             }
             '>' => {
                 pointer += 1;
@@ -77,15 +79,15 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                 pointer -= 1;
             }
             '.' => {
-                push_inst!(InstOp::Out);
+                push_inst!(IROp::Out);
             }
             ',' => {
-                push_inst!(InstOp::In);
+                push_inst!(IROp::In);
             }
             '[' => {
                 loop_stack.push(insts.len());
                 is_flat = true;
-                push_inst!(InstOp::LoopStart(usize::MAX));
+                push_inst!(IROp::LoopStart(usize::MAX));
             }
             ']' => {
                 let start = loop_stack.pop().unwrap();
@@ -95,9 +97,9 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                 let is_ptr_stable = start_ptr == pointer;
 
                 if end - start == 2 {
-                    if let InstOp::Add(255) = insts.last().unwrap().opcode {
+                    if let IROp::Add(255) = insts.last().unwrap().opcode {
                         insts.truncate(insts.len() - 2);
-                        push_inst!(InstOp::Set(0));
+                        push_inst!(IROp::Set(0));
                         continue;
                     }
                 }
@@ -105,13 +107,13 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                     pointer = start_ptr;
                     if end - start == 1 {
                         insts.truncate(start);
-                        push_inst!(InstOp::Shift(end_ptr - start_ptr));
+                        push_inst!(IROp::Shift(end_ptr - start_ptr));
                         continue;
                     }
                 } else if is_flat {
                     is_flat = false;
                     let mut dests_res: Result<Vec<(isize, u8)>, ()> = insts[(start+1)..end].iter().map(|dest| {
-                        if let Instruction { pointer, opcode: InstOp::Add(val) } = dest {
+                        if let IR { pointer, opcode: IROp::Add(val) } = dest {
                             Ok((*pointer, *val))
                         } else {
                             Err(())
@@ -123,7 +125,7 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                                 dests.remove(decrement_pos);
                                 insts.truncate(start);
 
-                                if let Instruction { pointer: source, opcode: InstOp::MulAndSetZero(last_dests) } = insts.last().unwrap().clone() {
+                                if let IR { pointer: source, opcode: IROp::MulAndSetZero(last_dests) } = insts.last().unwrap().clone() {
                                     if let Some(to_ldests_at) = last_dests.iter().position(|&dest| dest == (pointer, 1)) {
                                         if let Some(from_dests_at) = dests.iter().position(|&dest| dest == (source, 1)) {
                                             dests.remove(from_dests_at);
@@ -134,29 +136,31 @@ pub fn parse(code: &str) -> Vec<Instruction> {
                                             }
                                             
                                             insts.truncate(start - 1);
-                                            push_inst!(InstOp::MulAndSetZeroTo(source, dests.to_vec()));
+                                            push_inst!(IROp::MulAndSetZeroTo(source, dests.to_vec()));
                                             continue;
                                         }
                                     }
                                 }
 
-                                push_inst!(InstOp::MulAndSetZero(dests.to_vec()));
+                                push_inst!(IROp::MulAndSetZero(dests.to_vec()));
                                 continue;
                             }
                         }
                     }
                 }
 
-                insts[start].opcode = InstOp::LoopStart(end);
+                insts[start].opcode = IROp::LoopStart(end);
                 if is_ptr_stable {
-                    insts.push(Instruction { pointer: end_ptr, opcode: InstOp::LoopEnd(start) });
+                    insts.push(IR { pointer: end_ptr, opcode: IROp::LoopEnd(start) });
                 } else {
-                    insts.push(Instruction { pointer: end_ptr, opcode: InstOp::LoopEndWithOffset(start, end_ptr - start_ptr) });
+                    insts.push(IR { pointer: end_ptr, opcode: IROp::LoopEndWithOffset(start, end_ptr - start_ptr) });
                 }
             }
             _ => {}
         }
     }
+
+    insts.push(IR { pointer, opcode: IROp::End });
 
     insts
 }
