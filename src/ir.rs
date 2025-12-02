@@ -104,6 +104,7 @@ pub fn parse_to_ir(code: &str) -> Vec<IR> {
                     }
                 }
                 if !is_ptr_stable {
+                    is_flat = false;
                     pointer = start_ptr;
                     if end - start == 1 {
                         insts.truncate(start);
