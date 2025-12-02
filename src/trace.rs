@@ -46,7 +46,7 @@ pub fn instructions_to_string(bytecodes: Vec<Bytecode>, m: OperationCountMap) ->
             OpCode::In => format!("[{}] = In()", b.ptr),
             OpCode::Out => format!("Out [{}]", b.ptr),
             OpCode::LoopStart => format!("loop [{}] {{", b.ptr),
-            OpCode::LoopEnd => format!("}}"),
+            OpCode::LoopEnd => format!("}} stable"),
             OpCode::LoopEndWithOffset => format!("}} offset({})", b.ptr2),
             OpCode::End => format!("End"),
         };
