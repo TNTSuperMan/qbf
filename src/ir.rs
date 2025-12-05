@@ -113,7 +113,9 @@ pub fn parse_to_ir(code: &str) -> Vec<IR> {
                     }
                 } else if is_flat {
                     is_flat = false;
-                    let mut dests_res: Result<Vec<(isize, u8)>, ()> = insts[(start+1)..end].iter().map(|dest| {
+                    let children = &insts[(start+1)..end];
+
+                    let mut dests_res: Result<Vec<(isize, u8)>, ()> = children.iter().map(|dest| {
                         if let IR { pointer, opcode: IROp::Add(val) } = dest {
                             Ok((*pointer, *val))
                         } else {
