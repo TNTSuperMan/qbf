@@ -107,28 +107,6 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     });
                 }
             }
-            IROp::MulAndSetZeroTo(source, dests) => {
-                bytecodes.push(Bytecode {
-                    opcode: OpCode::MulStart,
-                    val: 0,
-                    ptr: source,
-                    ptr2: ir.pointer,
-                    addr: bytecodes.len() + dests.len() + 1,
-                    _padding1: 0,
-                    _padding2: 0,
-                });
-                for (ptr, val) in dests {
-                    bytecodes.push(Bytecode {
-                        opcode: OpCode::Mul,
-                        val,
-                        ptr,
-                        ptr2: 0,
-                        addr: 0,
-                        _padding1: 0,
-                        _padding2: 0,
-                    });
-                }
-            }
 
             IROp::In => {
                 bytecodes.push(Bytecode {

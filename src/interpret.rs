@@ -60,7 +60,7 @@ pub fn run(insts: Vec<Bytecode>, size: usize, map: &mut OperationCountMap) -> Re
                     pc = bytecode.addr;
                     continue;
                 } else {
-                    set!(offset.wrapping_add(bytecode.ptr2), 0)?;
+                    set!(ptr, 0)?;
                 }
             }
             OpCode::Mul => {

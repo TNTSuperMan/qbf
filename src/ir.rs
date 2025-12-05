@@ -13,7 +13,6 @@ pub enum IROp {
 
     Shift(isize),
     MulAndSetZero(Vec<(isize, u8)>),
-    MulAndSetZeroTo(isize, Vec<(isize, u8)>),
 
     In,
     Out,
@@ -127,23 +126,6 @@ pub fn parse_to_ir(code: &str) -> Vec<IR> {
                             if !dests.iter().all(|&(ptr, _)| ptr == pointer) {
                                 dests.remove(decrement_pos);
                                 insts.truncate(start);
-
-                                if let IR { pointer: source, opcode: IROp::MulAndSetZero(last_dests) } = insts.last().unwrap().clone() {
-                                    if let Some(to_ldests_at) = last_dests.iter().position(|&dest| dest == (pointer, 1)) {
-                                        if let Some(from_dests_at) = dests.iter().position(|&dest| dest == (source, 1)) {
-                                            dests.remove(from_dests_at);
-                                            for (i, dest) in last_dests.iter().enumerate() {
-                                                if i != to_ldests_at {
-                                                    dests.push(*dest);
-                                                }
-                                            }
-                                            
-                                            insts.truncate(start - 1);
-                                            push_inst!(IROp::MulAndSetZeroTo(source, dests.to_vec()));
-                                            continue;
-                                        }
-                                    }
-                                }
 
                                 push_inst!(IROp::MulAndSetZero(dests.to_vec()));
                                 continue;
