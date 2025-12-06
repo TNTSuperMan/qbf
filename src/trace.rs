@@ -41,7 +41,7 @@ pub fn instructions_to_string(bytecodes: Vec<Bytecode>, m: OperationCountMap) ->
             OpCode::Add => format!("[{}] += {}", b.ptr, b.val),
             OpCode::Set => format!("[{}] = {}", b.ptr, b.val),
             OpCode::Shift => format!("Shift {} from {}", b.ptr2, b.ptr),
-            OpCode::MulStart => format!("MulStart [{}], [{}] = 0", b.ptr, b.ptr2),
+            OpCode::MulStart => format!("MulStart [{}]", b.ptr),
             OpCode::Mul => format!("[{}] += m * {}", b.ptr, b.val),
             OpCode::In => format!("[{}] = In()", b.ptr),
             OpCode::Out => format!("Out [{}]", b.ptr),
