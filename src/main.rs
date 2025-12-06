@@ -3,11 +3,11 @@ use std::time::Instant;
 use crate::{bytecode::ir_to_bytecodes, interpret::run, ir::parse_to_ir, memory::StaticMemory, trace::OperationCountMap};
 use clap::Parser;
 
-mod interpret;
+mod memory;
 mod ir;
 mod bytecode;
+mod interpret;
 mod trace;
-mod memory;
 
 #[derive(Parser, Debug)]
 #[command(name = "qbf")]
@@ -37,9 +37,11 @@ fn main() {
 
                     let ir = parse_to_ir(&code);
                     let bytecodes = ir_to_bytecodes(ir);
-                    let mut v = OperationCountMap::new(bytecodes.len());
+
+                    let mut ocm = OperationCountMap::new(bytecodes.len());
                     let mut memory = StaticMemory::new();
-                    let result = run(bytecodes.clone(), &mut memory, &mut v);
+                    
+                    let result = run(bytecodes.clone(), &mut memory, &mut ocm);
                     if let Err(err) = result.clone() {
                         eprintln!("{}", err);
                         return;
@@ -53,17 +55,20 @@ fn main() {
             } else {
                 let ir = parse_to_ir(&code);
                 let bytecodes = ir_to_bytecodes(ir);
-                let mut v = OperationCountMap::new(bytecodes.len());
+
+                let mut ocm = OperationCountMap::new(bytecodes.len());
                 let mut memory = StaticMemory::new();
-                let result = run(bytecodes.clone(), &mut memory, &mut v);
+
+                let result = run(bytecodes.clone(), &mut memory, &mut ocm);
                 if let Err(err) = result.clone() {
                     eprintln!("{}", err);
                 }
+
                 #[cfg(feature = "debug")] {
                     use crate::trace::instructions_to_string;
                     use std::fs;
                     fs::write("./box/memory", *memory.0).expect("failed to write");
-                    fs::write("./box/bytecodes", instructions_to_string(bytecodes, v)).expect("failed to write");
+                    fs::write("./box/bytecodes", instructions_to_string(bytecodes, ocm)).expect("failed to write");
                 }
             }
         }
