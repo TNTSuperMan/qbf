@@ -1,0 +1,19 @@
+# qbf
+![qbf logo](./assets/qbf.png)
+
+A quickly Brainfuck runtime.
+
+## Usage
+
+```bash
+$ qbf mandel.bf
+$ qbf long.bf --benchmark-count=16
+# qbf test.bf --memory-size=32768 # comming soon
+```
+
+## Benchmark
+Release mode, No default features, A mandelbrot set fractal viewer in brainf*** written by Erik Bosman, Windows10/WSL2 Intel Core(TM) i5 7200U, Count: 16  
+Mean time(sec): 5.747831244125
+
+## License
+MIT license.
