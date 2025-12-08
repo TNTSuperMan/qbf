@@ -95,13 +95,6 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                 let end_ptr = pointer;
                 let is_ptr_stable = start_ptr == pointer;
 
-                if end - start == 2 { // SAFETY: 上部で対応する[を確認しているため、少なくとも命令列は1以上あるため安全
-                    if let IROp::Add(255) = insts.last().unwrap().opcode {
-                        insts.truncate(insts.len() - 2);
-                        push_inst!(IROp::Set(0));
-                        continue;
-                    }
-                }
                 if !is_ptr_stable {
                     is_flat = false;
                     pointer = start_ptr;
@@ -113,6 +106,14 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                 } else if is_flat {
                     is_flat = false;
                     let children = &insts[(start+1)..end];
+
+                    if children.len() == 1 {
+                        if let IROp::Add(255) = insts[0].opcode {
+                            insts.truncate(insts.len() - 2);
+                            push_inst!(IROp::Set(0));
+                            continue;
+                        }
+                    }
 
                     let mut dests_res: Result<Vec<(isize, u8)>, ()> = children.iter().map(|dest| {
                         if let IR { pointer, opcode: IROp::Add(val) } = dest {
