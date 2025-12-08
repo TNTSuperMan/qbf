@@ -19,7 +19,7 @@ impl Memory for StaticMemory {
     fn get(&self, index: isize) -> Result<u8, String> {
         match self.0.get(index as usize) {
             Some(val) => Ok(*val),
-            None => Err(format!("Out of range memory read, Address: {}", index)),
+            None => Err(format!("Runtime Error: Out of range memory read, Address: {}", index)),
         }
     }
     fn set(&mut self, index: isize, value: u8) -> Result<(), String> {
@@ -28,7 +28,7 @@ impl Memory for StaticMemory {
                 *val = value;
                 Ok(())
             },
-            None => Err(format!("Out of range memory write, Address: {}", index)),
+            None => Err(format!("Runtime Error: Out of range memory write, Address: {}", index)),
         }
     }
     unsafe fn get_unchecked(&self, index: usize) -> u8 {

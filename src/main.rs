@@ -27,15 +27,23 @@ fn main() {
     
     match std::fs::read_to_string(args.file) {
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("File Error: {}", e);
         }
         Ok(code) => {
             if let Some(count) = args.benchmark_count {
+                match parse_to_ir(&code) {
+                    Ok(_ir) => {},
+                    Err(msg) => {
+                        eprintln!("{}", msg);
+                        eprintln!("Run without --benchmark-count for more details");
+                        return;
+                    }
+                };
                 let mut times: Vec<f64> = vec![];
                 for _ in 0..count {
                     let start = Instant::now();
 
-                    let ir = parse_to_ir(&code);
+                    let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
                     let bytecodes = ir_to_bytecodes(ir);
 
                     let mut ocm = OperationCountMap::new(bytecodes.len());
@@ -53,7 +61,14 @@ fn main() {
                 let mean = times.iter().sum::<f64>() / times.len() as f64;
                 println!("Mean time(sec): {}", mean);
             } else {
-                let ir = parse_to_ir(&code);
+                let ir = match parse_to_ir(&code) {
+                    Ok(ir) => ir,
+                    Err(msg) => {
+                        // TODO: 詳細にエラーを出す仕組みにする
+                        eprintln!("{}", msg);
+                        return;
+                    }
+                };
                 let bytecodes = ir_to_bytecodes(ir);
 
                 let mut ocm = OperationCountMap::new(bytecodes.len());

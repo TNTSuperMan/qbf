@@ -24,7 +24,7 @@ pub enum IROp {
     End,
 }
 
-pub fn parse_to_ir(code: &str) -> Vec<IR> {
+pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
     let mut insts: Vec<IR> = Vec::new();
     let mut loop_stack: Vec<usize> = Vec::new();
     let mut pointer: isize = 0;
@@ -89,13 +89,13 @@ pub fn parse_to_ir(code: &str) -> Vec<IR> {
                 push_inst!(IROp::LoopStart(usize::MAX));
             }
             ']' => {
-                let start = loop_stack.pop().unwrap();
+                let start = loop_stack.pop().ok_or("Syntax Error: Unmatched closing bracket")?;
                 let start_ptr = insts[start].pointer;
                 let end = insts.len();
                 let end_ptr = pointer;
                 let is_ptr_stable = start_ptr == pointer;
 
-                if end - start == 2 {
+                if end - start == 2 { // SAFETY: 上部で対応する[を確認しているため、少なくとも命令列は1以上あるため安全
                     if let IROp::Add(255) = insts.last().unwrap().opcode {
                         insts.truncate(insts.len() - 2);
                         push_inst!(IROp::Set(0));
@@ -147,5 +147,9 @@ pub fn parse_to_ir(code: &str) -> Vec<IR> {
 
     insts.push(IR { pointer, opcode: IROp::End });
 
-    insts
+    if loop_stack.len() != 0 {
+        return Err(String::from("Syntax Error: Unmatched opening bracket"))
+    }
+
+    Ok(insts)
 }
