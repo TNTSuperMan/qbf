@@ -4,7 +4,7 @@ pub struct IR {
     pub opcode: IROp,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum IROp {
     Breakpoint,
 
@@ -93,26 +93,24 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                 let start_ptr = insts[start].pointer;
                 let end = insts.len();
                 let end_ptr = pointer;
-                let is_ptr_stable = start_ptr == pointer;
+                let is_ptr_stable = start_ptr == end_ptr;
+                let children = &insts[(start+1)..end];
 
                 if !is_ptr_stable {
                     is_flat = false;
                     pointer = start_ptr;
-                    if end - start == 1 {
+                    if children.len() == 0 {
                         insts.truncate(start);
                         push_inst!(IROp::Shift(end_ptr - start_ptr));
                         continue;
                     }
                 } else if is_flat {
                     is_flat = false;
-                    let children = &insts[(start+1)..end];
 
-                    if children.len() == 1 {
-                        if let IROp::Add(255) = children[0].opcode {
-                            insts.truncate(insts.len() - 2);
-                            push_inst!(IROp::Set(0));
-                            continue;
-                        }
+                    if children.len() == 1 && children[0].opcode == IROp::Add(255) {
+                        insts.truncate(start);
+                        push_inst!(IROp::Set(0));
+                        continue;
                     }
 
                     let mut dests_res: Result<Vec<(isize, u8)>, ()> = children.iter().map(|dest| {
