@@ -108,7 +108,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                     let children = &insts[(start+1)..end];
 
                     if children.len() == 1 {
-                        if let IROp::Add(255) = insts[0].opcode {
+                        if let IROp::Add(255) = children[0].opcode {
                             insts.truncate(insts.len() - 2);
                             push_inst!(IROp::Set(0));
                             continue;
