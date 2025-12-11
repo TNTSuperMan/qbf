@@ -48,6 +48,10 @@ pub fn run(insts: Vec<Bytecode>, memory: &mut impl Memory, map: &mut OperationCo
                 );
                 memory.set(ptr, mul_val)?;
             }
+            OpCode::AddFromMemory => {
+                let add_val = memory.get(ptr)?.wrapping_add(mul_cache);
+                memory.set(ptr, add_val)?;
+            }
 
             OpCode::In => {
                 memory.set(ptr, 0)?; // TODO

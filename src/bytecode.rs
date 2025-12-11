@@ -23,6 +23,7 @@ pub enum OpCode {
     Shift, // ptr: shift source, ptr3: shift size
     MulStart, // addr: skip addr
     Mul,
+    AddFromMemory,
 
     In,
     Out,
@@ -96,15 +97,33 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     _padding2: 0,
                 });
                 for (ptr, val) in dests {
-                    bytecodes.push(Bytecode {
-                        opcode: OpCode::Mul,
-                        val,
-                        ptr,
-                        ptr2: 0,
-                        addr: 0,
-                        _padding1: 0,
-                        _padding2: 0,
-                    });
+                    match val {
+                        0 => {
+                            /* 何もする必要は無い */
+                        }
+                        1 => {
+                            bytecodes.push(Bytecode {
+                                opcode: OpCode::AddFromMemory,
+                                val: 0,
+                                ptr,
+                                ptr2: 0,
+                                addr: 0,
+                                _padding1: 0,
+                                _padding2: 0,
+                            });
+                        }
+                        _ => {
+                            bytecodes.push(Bytecode {
+                                opcode: OpCode::Mul,
+                                val,
+                                ptr,
+                                ptr2: 0,
+                                addr: 0,
+                                _padding1: 0,
+                                _padding2: 0,
+                            });
+                        }
+                    }
                 }
             }
 
