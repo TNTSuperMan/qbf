@@ -52,6 +52,28 @@ pub fn run(insts: Vec<Bytecode>, memory: &mut impl Memory, map: &mut OperationCo
                 let add_val = memory.get(ptr)?.wrapping_add(mul_cache);
                 memory.set(ptr, add_val)?;
             }
+            OpCode::SingleMul => {
+                let ptr2 = offset.wrapping_add(bytecode.ptr2);
+                let ptr2_val = memory.get(ptr2)?;
+                if ptr2_val != 0 {
+                    let mul_val = memory.get(ptr)?.wrapping_add(
+                        ptr2_val.wrapping_mul(
+                            bytecode.val
+                        )
+                    );
+                    memory.set(ptr, mul_val)?;
+                    memory.set(ptr2, 0)?;
+                }
+            }
+            OpCode::SingleAddFM => {
+                let ptr2 = offset.wrapping_add(bytecode.ptr2);
+                let ptr2_val = memory.get(ptr2)?;
+                if ptr2_val != 0 {
+                    let add_val = memory.get(ptr)?.wrapping_add(ptr2_val);
+                    memory.set(ptr, add_val)?;
+                    memory.set(ptr2, 0)?;
+                }
+            }
 
             OpCode::In => {
                 memory.set(ptr, 0)?; // TODO

@@ -25,6 +25,9 @@ pub enum OpCode {
     Mul,
     AddFromMemory,
 
+    SingleMul, // ptr: to, ptr2: from, val
+    SingleAddFM, // ptr: to, ptr2: from
+
     In,
     Out,
 
@@ -87,6 +90,38 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                 });
             }
             IROp::MulAndSetZero(dests) => {
+                if dests.len() == 1 {
+                    let (dest_ptr, dest_val) = dests[0]; // SAFETY: 要素が一つあることを確認済み
+                    match dest_val {
+                        0 => {
+                            /* 下の通常のバイトコード生成にスキップ */
+                        }
+                        1 => {
+                            bytecodes.push(Bytecode {
+                                opcode: OpCode::SingleAddFM,
+                                val: 0,
+                                ptr: dest_ptr,
+                                ptr2: ir.pointer,
+                                addr: 0,
+                                _padding1: 0,
+                                _padding2: 0,
+                            });
+                            continue;
+                        }
+                        _ => {
+                            bytecodes.push(Bytecode {
+                                opcode: OpCode::SingleMul,
+                                val: dest_val,
+                                ptr: dest_ptr,
+                                ptr2: ir.pointer,
+                                addr: 0,
+                                _padding1: 0,
+                                _padding2: 0,
+                            });
+                            continue;
+                        }
+                    }
+                }
                 bytecodes.push(Bytecode {
                     opcode: OpCode::MulStart,
                     val: 0,
