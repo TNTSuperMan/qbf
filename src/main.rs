@@ -8,6 +8,7 @@ mod ir;
 mod bytecode;
 mod interpret;
 mod trace;
+mod ssa;
 
 #[derive(Parser, Debug)]
 #[command(name = "qbf")]
