@@ -2,39 +2,40 @@ use std::{collections::HashMap, fmt::Debug};
 
 pub mod parse;
 
-type SSAData = HashMap<isize, Vec<SSAVariant>>;
+type PointerSSAHistory = HashMap<isize, Vec<PointerOperation>>;
 
 #[derive(Clone, Copy)]
-pub struct SSA {
+pub struct PointerVersion {
     ptr: isize,
-    index: usize,
+    version: usize,
 }
 
-impl Debug for SSA {
+impl Debug for PointerVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("SSA([{}]#{})", self.ptr, self.index))?;
+        f.write_str(&format!("PointerVersion([{}]#{})", self.ptr, self.version))?;
         Ok(())
     }
 }
 
-pub enum SSAVariant {
-    Raw(isize),
-    SetConst(u8),
-    AddConst(u8),
-    SetFrom(SSA),
-    AddFrom(SSA),
-    AddMul(u8, SSA),
+#[derive(Clone, Copy)]
+pub enum PointerOperation {
+    UntrackedValue(isize),
+    AssignConstant(u8),
+    AddConstant(u8),
+    AssignFromPointer(PointerVersion),
+    AddFromPointer(PointerVersion),
+    AddMultipliedValue(u8, PointerVersion),
 }
 
-impl Debug for SSAVariant {
+impl Debug for PointerOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SSAVariant::Raw(ptr) => f.write_str(&format!("Raw([{}])", ptr)),
-            SSAVariant::SetConst(val) => f.write_str(&format!("SetConst({})", val)),
-            SSAVariant::AddConst(val) => f.write_str(&format!("AddConst({})", val)),
-            SSAVariant::SetFrom(ssa) => f.write_str(&format!("SetFrom({:?})", ssa)),
-            SSAVariant::AddFrom(ssa) => f.write_str(&format!("AddFrom({:?})", ssa)),
-            SSAVariant::AddMul(val, ssa) => f.write_str(&format!("AddMul({},{:?})", val, ssa)),
+            PointerOperation::UntrackedValue(ptr) => f.write_str(&format!("UntrackedValue([{}])", ptr)),
+            PointerOperation::AssignConstant(val) => f.write_str(&format!("AssignConstant({})", val)),
+            PointerOperation::AddConstant(val) => f.write_str(&format!("AddConstant({})", val)),
+            PointerOperation::AssignFromPointer(version) => f.write_str(&format!("AssignFromPointer({:?})", version)),
+            PointerOperation::AddFromPointer(version) => f.write_str(&format!("AddFromPointer({:?})", version)),
+            PointerOperation::AddMultipliedValue(val, version) => f.write_str(&format!("AddMultipliedValue({},{:?})", val, version)),
         }?;
         Ok(())
     }
