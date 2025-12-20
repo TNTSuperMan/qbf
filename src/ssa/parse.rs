@@ -7,7 +7,7 @@ pub fn build_ssa_from_ir(ir_arr: &[IR]) -> Option<PointerSSAHistory> {
 
     macro_rules! get_pointer_history {
         ($ptr: expr) => {
-            ssa_history.entry($ptr).or_insert_with(|| vec![PointerOperation::UntrackedValue($ptr)])
+            ssa_history.entry($ptr).or_insert_with(|| vec![PointerOperation::raw($ptr)])
         };
     }
 
@@ -15,14 +15,14 @@ pub fn build_ssa_from_ir(ir_arr: &[IR]) -> Option<PointerSSAHistory> {
         match &ir.opcode {
             IROp::Add(val) => {
                 let current_history = get_pointer_history!(ir.pointer);
-                current_history.push(PointerOperation::AddConstant(PointerVersion {
+                current_history.push(PointerOperation::add_pc(PointerVersion {
                     ptr: ir.pointer,
                     version: current_history.len() - 1,
                 }, *val));
             }
             IROp::Set(val) => {
                 let current_history = get_pointer_history!(ir.pointer);
-                current_history.push(PointerOperation::AssignConstant(*val));
+                current_history.push(PointerOperation::set_c(*val));
             }
             IROp::MulAndSetZero(dests) => {
                 let source_version = PointerVersion {
@@ -34,13 +34,13 @@ pub fn build_ssa_from_ir(ir_arr: &[IR]) -> Option<PointerSSAHistory> {
                 };
                 for (dest_ptr, dest_val) in dests {
                     let dest_history = get_pointer_history!(*dest_ptr);
-                    dest_history.push(PointerOperation::AddMultipliedValue(PointerVersion {
+                    dest_history.push(PointerOperation::mul_add(PointerVersion {
                         ptr: *dest_ptr,
                         version: dest_history.len() - 1,
                     }, source_version, *dest_val));
                 }
                 let source_history = get_pointer_history!(ir.pointer);
-                source_history.push(PointerOperation::AssignConstant(0));
+                source_history.push(PointerOperation::set_c(0));
             }
             _ => {
                 return None;

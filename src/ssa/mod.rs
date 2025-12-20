@@ -20,23 +20,29 @@ impl Debug for PointerVersion {
 
 #[derive(Clone, Copy)]
 pub enum PointerOperation {
-    UntrackedValue(isize),
-    AssignConstant(u8),
-    AddConstant(PointerVersion, u8),
-    AssignFromPointer(PointerVersion),
-    AddFromPointer(PointerVersion, PointerVersion),
-    AddMultipliedValue(PointerVersion, PointerVersion, u8),
+    raw(isize),
+    set_c(u8),
+    set_p(PointerVersion),
+    add_pc(PointerVersion, u8),
+    add_pp(PointerVersion, PointerVersion),
+    mul_pc(PointerVersion, u8),
+    mul_pp(PointerVersion, PointerVersion),
+
+    mul_add(PointerVersion, PointerVersion, u8),
 }
 
 impl Debug for PointerOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PointerOperation::UntrackedValue(ptr) => f.write_str(&format!("raw [{}]", ptr)),
-            PointerOperation::AssignConstant(val) => f.write_str(&format!("const {}", val)),
-            PointerOperation::AddConstant(ptr, val) => f.write_str(&format!("$ac {:?} + {}", ptr, val)),
-            PointerOperation::AssignFromPointer(version) => f.write_str(&format!("$ld {:?}", version)),
-            PointerOperation::AddFromPointer(to, dest) => f.write_str(&format!("$afp {:?} + {:?}", to, dest)),
-            PointerOperation::AddMultipliedValue(to, dest, val) => f.write_str(&format!("$amv {:?} + {:?} * {}", to, dest, val)),
+            PointerOperation::raw(ptr) => f.write_str(&format!("raw [{}]", ptr)),
+            PointerOperation::set_c(val) => f.write_str(&format!("const {}", val)),
+            PointerOperation::set_p(version) => f.write_str(&format!("{:?}", version)),
+            PointerOperation::add_pc(ptr, val) => f.write_str(&format!("{:?} + {}", ptr, val)),
+            PointerOperation::add_pp(to, dest) => f.write_str(&format!("{:?} + {:?}", to, dest)),
+            PointerOperation::mul_pc(dest, val) => f.write_str(&format!("{:?} * {}", dest, val)),
+            PointerOperation::mul_pp(dest, val) => f.write_str(&format!("{:?} * {:?}", dest, val)),
+
+            PointerOperation::mul_add(from, dest, val) => f.write_str(&format!("{:?} + {:?} * {}", from, dest, val)),
         }?;
         Ok(())
     }
