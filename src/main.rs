@@ -81,13 +81,18 @@ fn main() {
                 }
 
                 #[cfg(feature = "debug")] {
-                    use crate::{ssa::parse::build_ssa_from_ir, trace::instructions_to_string};
+                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir}, trace::instructions_to_string};
                     use std::fs;
                     fs::write("./box/memory", *memory.0).expect("failed to write");
                     fs::write("./box/bytecodes", instructions_to_string(bytecodes, ocm)).expect("failed to write");
                     let mut noend_ir = ir.clone();
                     noend_ir.pop();
-                    fs::write("./box/ssa", format!("{:?}", build_ssa_from_ir(&noend_ir))).expect("failed to write");
+                    let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
+                    let one_round = inline_ssa_history(raw.clone());
+                    let two_round = inline_ssa_history(one_round.clone());
+                    fs::write("./box/ssa", format!("{:?}", raw)).expect("failed to write");
+                    fs::write("./box/ssa_opt1", format!("{:?}", one_round)).expect("failed to write");
+                    fs::write("./box/ssa_opt2", format!("{:?}", two_round)).expect("failed to write");
                 }
             }
         }
