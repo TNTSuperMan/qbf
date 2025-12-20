@@ -1,9 +1,46 @@
 use std::{collections::HashMap, fmt::Debug};
 
 pub mod parse;
-mod inline;
+pub mod inline;
 
-type PointerSSAHistory = HashMap<isize, Vec<PointerOperation>>;
+#[derive(Clone)]
+pub struct PointerSSAHistory(HashMap<isize, Vec<SSAOp>>);
+impl PointerSSAHistory {
+    pub fn new() -> PointerSSAHistory {
+        PointerSSAHistory(HashMap::new())
+    }
+    pub fn get_op(&self, version: PointerVersion) -> Option<SSAOp> {
+        match self.0.get(&version.ptr) {
+            Some(history) => {
+                match history.get(version.version) {
+                    Some(op) => Some(*op),
+                    None => None,
+                }
+            },
+            None => None,
+        }
+    }
+    pub fn get_history(&self, ptr: isize) -> Option<&Vec<SSAOp>> {
+        match self.0.get(&ptr) {
+            Some(history) => Some(history),
+            None => None,
+        }
+    }
+    pub fn get_history_mut(&mut self, ptr: isize) -> &mut Vec<SSAOp> {
+        self.0.entry(ptr).or_insert_with(|| vec![SSAOp::raw(ptr)])
+    }
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, isize, Vec<SSAOp>> {
+        self.0.iter()
+    }
+    pub fn insert(&mut self, ptr: isize, history: Vec<SSAOp>) {
+        self.0.insert(ptr, history);
+    }
+}
+impl Debug for PointerSSAHistory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct PointerVersion {
@@ -19,7 +56,7 @@ impl Debug for PointerVersion {
 }
 
 #[derive(Clone, Copy)]
-pub enum PointerOperation {
+pub enum SSAOp {
     raw(isize),
     set_c(u8),
     set_p(PointerVersion),
@@ -31,18 +68,18 @@ pub enum PointerOperation {
     mul_add(PointerVersion, PointerVersion, u8),
 }
 
-impl Debug for PointerOperation {
+impl Debug for SSAOp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PointerOperation::raw(ptr) => f.write_str(&format!("raw [{}]", ptr)),
-            PointerOperation::set_c(val) => f.write_str(&format!("const {}", val)),
-            PointerOperation::set_p(version) => f.write_str(&format!("{:?}", version)),
-            PointerOperation::add_pc(ptr, val) => f.write_str(&format!("{:?} + {}", ptr, val)),
-            PointerOperation::add_pp(to, dest) => f.write_str(&format!("{:?} + {:?}", to, dest)),
-            PointerOperation::mul_pc(dest, val) => f.write_str(&format!("{:?} * {}", dest, val)),
-            PointerOperation::mul_pp(dest, val) => f.write_str(&format!("{:?} * {:?}", dest, val)),
+            SSAOp::raw(ptr) => f.write_str(&format!("raw [{}]", ptr)),
+            SSAOp::set_c(val) => f.write_str(&format!("{}", val)),
+            SSAOp::set_p(version) => f.write_str(&format!("set_p {:?}", version)),
+            SSAOp::add_pc(ptr, val) => f.write_str(&format!("add_pc {:?} + {}", ptr, val)),
+            SSAOp::add_pp(to, dest) => f.write_str(&format!("add_pp {:?} + {:?}", to, dest)),
+            SSAOp::mul_pc(dest, val) => f.write_str(&format!("mul_pc {:?} * {}", dest, val)),
+            SSAOp::mul_pp(dest, val) => f.write_str(&format!("mul_pp {:?} * {:?}", dest, val)),
 
-            PointerOperation::mul_add(from, dest, val) => f.write_str(&format!("{:?} + {:?} * {}", from, dest, val)),
+            SSAOp::mul_add(from, dest, val) => f.write_str(&format!("mul_add {:?} + {:?} * {}", from, dest, val)),
         }?;
         Ok(())
     }
