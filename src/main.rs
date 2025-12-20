@@ -70,7 +70,7 @@ fn main() {
                         return;
                     }
                 };
-                let bytecodes = ir_to_bytecodes(ir);
+                let bytecodes = ir_to_bytecodes(ir.clone());
 
                 let mut ocm = OperationCountMap::new(bytecodes.len());
                 let mut memory = StaticMemory::new();
@@ -81,10 +81,13 @@ fn main() {
                 }
 
                 #[cfg(feature = "debug")] {
-                    use crate::trace::instructions_to_string;
+                    use crate::{ssa::parse::build_ssa_from_ir, trace::instructions_to_string};
                     use std::fs;
                     fs::write("./box/memory", *memory.0).expect("failed to write");
                     fs::write("./box/bytecodes", instructions_to_string(bytecodes, ocm)).expect("failed to write");
+                    let mut noend_ir = ir.clone();
+                    noend_ir.pop();
+                    fs::write("./box/ssa", format!("{:?}", build_ssa_from_ir(&noend_ir))).expect("failed to write");
                 }
             }
         }
