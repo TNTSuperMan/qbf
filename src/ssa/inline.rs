@@ -73,16 +73,25 @@ pub fn inline_ssa_history(history_map: PointerSSAHistory) -> PointerSSAHistory {
                     }
                 }
                 SSAOp::mul_add(from, dest, val) => {
-                    match *val {
-                        0 => {
-                            inlined_history.push(SSAOp::set_p(*from));
+                    match history_map.get_simple_op(*from) {
+                        SimpleSSAOp::Const(0) => {
+                            inlined_history.push(SSAOp::mul_pc(*dest, *val));
                             continue;
                         }
-                        1 => {
-                            inlined_history.push(SSAOp::add_pp(*from, *dest));
-                            continue;
+                        SimpleSSAOp::Const(_from) => {}
+                        SimpleSSAOp::Version(from) => {
+                            match *val {
+                                0 => {
+                                    inlined_history.push(SSAOp::set_p(from));
+                                    continue;
+                                }
+                                1 => {
+                                    inlined_history.push(SSAOp::add_pp(from, *dest));
+                                    continue;
+                                }
+                                _ => {}
+                            }
                         }
-                        _ => {}
                     }
                 }
                 _ => {}
