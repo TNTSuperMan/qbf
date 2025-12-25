@@ -1,4 +1,20 @@
-use crate::ssa::{SSAOp, PointerSSAHistory};
+use crate::ssa::{PointerSSAHistory, PointerVersion, SSAOp};
+
+enum SimpleSSAOp {
+    Const(u8),
+    Version(PointerVersion),
+}
+impl PointerSSAHistory {
+    fn get_simple_op(&self, ver: PointerVersion) -> SimpleSSAOp {
+        match self.get_op(ver).unwrap() {
+            SSAOp::set_c(val) => SimpleSSAOp::Const(val),
+            SSAOp::set_p(v) => self.get_simple_op(v),
+            SSAOp::mul_pc(_, 0) => SimpleSSAOp::Const(0),
+            SSAOp::mul_pc(v, 1) => self.get_simple_op(v),
+            _ => SimpleSSAOp::Version(ver)
+        }
+    }
+}
 
 pub fn inline_ssa_history(history_map: PointerSSAHistory) -> PointerSSAHistory {
     let mut inlined_history_map: PointerSSAHistory = PointerSSAHistory::new();
@@ -8,82 +24,49 @@ pub fn inline_ssa_history(history_map: PointerSSAHistory) -> PointerSSAHistory {
             match h {
                 SSAOp::raw(_raw_ptr) => {}
                 SSAOp::set_c(_val) => {}
-                SSAOp::set_p(ver) => {
-                    inlined_history.push(history_map.get_op(*ver).unwrap());
-                    continue;
-                }
+                SSAOp::set_p(_ver) => {}
                 SSAOp::add_pc(ver, val) => {
                     if *val == 0 {
                         inlined_history.push(SSAOp::set_p(*ver));
                         continue;
                     }
-                    match history_map.get_op(*ver).unwrap() {
-                        SSAOp::set_c(val2) => {
+                    match history_map.get_simple_op(*ver) {
+                        SimpleSSAOp::Const(val2) => {
                             inlined_history.push(SSAOp::set_c(val.wrapping_add(val2)));
                             continue;
                         }
-                        SSAOp::set_p(ver2) => {
+                        SimpleSSAOp::Version(ver2) => {
                             inlined_history.push(SSAOp::add_pc(ver2, *val));
                             continue;
                         }
-                        SSAOp::mul_pc(ver2, val2) => {
-                            match val2 {
-                                0 => {
-                                    inlined_history.push(SSAOp::set_c(*val));
-                                    continue;
-                                }
-                                1 => {
-                                    inlined_history.push(SSAOp::add_pc(ver2, *val));
-                                    continue;
-                                }
-                                _ => {}
-                            }
-                        }
-                        _ => {}
                     }
                 }
                 SSAOp::add_pp(ver_left, ver_right) => {
-                    let left = history_map.get_op(*ver_left).unwrap();
-                    let right = history_map.get_op(*ver_right).unwrap();
-                    println!("{:?} + {:?}", left, right);
+                    let left = history_map.get_simple_op(*ver_left);
+                    let right = history_map.get_simple_op(*ver_right);
 
                     match (left, right) {
-                        (SSAOp::set_c(lv), SSAOp::set_c(rv)) => {
+                        (SimpleSSAOp::Const(lv), SimpleSSAOp::Const(rv)) => {
                             inlined_history.push(SSAOp::set_c(lv.wrapping_add(rv)));
                             continue;
                         }
                         
-                        (SSAOp::set_p(ver_l), SSAOp::set_c(rv)) => {
-                            if rv == 0 {
-                                inlined_history.push(SSAOp::set_p(ver_l));
-                            } else {
-                                inlined_history.push(SSAOp::add_pc(ver_l, rv));
-                            }
+                        (SimpleSSAOp::Version(ver_l), SimpleSSAOp::Const(0)) => {
+                            inlined_history.push(SSAOp::set_p(ver_l));
                             continue;
                         }
-                        (SSAOp::set_c(lv), SSAOp::set_p(ver_r)) => {
-                            if lv == 0 {
-                                inlined_history.push(SSAOp::set_p(ver_r));
-                            } else {
-                                inlined_history.push(SSAOp::add_pc(ver_r, lv));
-                            }
+                        (SimpleSSAOp::Version(ver_l), SimpleSSAOp::Const(rv)) => {
+                            inlined_history.push(SSAOp::add_pc(ver_l, rv));
                             continue;
                         }
-
-                        (SSAOp::set_c(lv), right) => {
-                            if lv == 0 {
-                                inlined_history.push(right);
-                            } else {
-                                inlined_history.push(SSAOp::add_pc(*ver_right, lv));
-                            }
+                        
+                        
+                        (SimpleSSAOp::Const(0), SimpleSSAOp::Version(ver_r)) => {
+                            inlined_history.push(SSAOp::set_p(ver_r));
                             continue;
                         }
-                        (left, SSAOp::set_c(rv)) => {
-                            if rv == 0 {
-                                inlined_history.push(left);
-                            } else {
-                                inlined_history.push(SSAOp::add_pc(*ver_left, rv));
-                            }
+                        (SimpleSSAOp::Const(lv), SimpleSSAOp::Version(ver_r)) => {
+                            inlined_history.push(SSAOp::add_pc(ver_r, lv));
                             continue;
                         }
                         _ => {}
