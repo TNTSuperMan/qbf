@@ -75,7 +75,17 @@ pub fn inline_ssa_history(history_map: PointerSSAHistory) -> PointerSSAHistory {
                 SSAOp::mul_add(from, dest, val) => {
                     match history_map.get_simple_op(*from) {
                         SimpleSSAOp::Const(0) => {
-                            inlined_history.push(SSAOp::mul_pc(*dest, *val));
+                            match *val {
+                                0 => {
+                                    inlined_history.push(SSAOp::set_c(0));
+                                }
+                                1 => {
+                                    inlined_history.push(SSAOp::set_p(*dest));
+                                }
+                                _ => {
+                                    inlined_history.push(SSAOp::mul_pc(*dest, *val));
+                                }
+                            }
                             continue;
                         }
                         SimpleSSAOp::Const(_from) => {}
