@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 pub mod parse;
 pub mod inline;
+pub mod to_ir;
 
 #[derive(Clone)]
 pub struct PointerSSAHistory(HashMap<isize, Vec<SSAOp>>);
@@ -42,7 +43,7 @@ impl Debug for PointerSSAHistory {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct PointerVersion {
     ptr: isize,
     version: usize,
