@@ -185,7 +185,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                     }
                     IROp::Out => {
                         bytecodes.push(Bytecode2 {
-                            opcode: OpCode2::In,
+                            opcode: OpCode2::Out,
                             delta,
                             val: 0,
                             addr: 0,
