@@ -6,7 +6,9 @@ use clap::Parser;
 mod memory;
 mod ir;
 mod bytecode;
+mod bytecode2;
 mod interpret;
+mod interpret2;
 mod trace;
 mod ssa;
 
@@ -81,10 +83,15 @@ fn main() {
                 }
 
                 #[cfg(feature = "debug")] {
-                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::instructions_to_string};
+                    use crate::{bytecode2::ir_to_bytecodes2, interpret2::run2, ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::instructions_to_string};
                     use std::fs;
                     fs::write("./box/memory", *memory.0).expect("failed to write");
                     fs::write("./box/bytecodes", instructions_to_string(bytecodes, ocm)).expect("failed to write");
+                    let b2 = ir_to_bytecodes2(ir.clone()).unwrap();
+                    fs::write("./box/bytecodes2", format!("{:?}",b2)).expect("failed to write");
+                    let mut m2 = StaticMemory::new();
+                    run2(b2, &mut m2).unwrap();
+                    fs::write("./box/memory2", *m2.0).expect("failed to write");
                     let mut noend_ir = ir.clone();
                     noend_ir.pop();
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
