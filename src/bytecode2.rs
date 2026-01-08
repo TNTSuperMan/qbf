@@ -24,10 +24,8 @@ pub enum OpCode2 {
     ShiftAdd,
     ShiftSet,
 
-    /*
     MulStart,
     Mul,
-    */
 
     In,
     Out,
@@ -54,7 +52,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
             Some(node) => {
                 let delta = i16::try_from(node.pointer.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                 last_ptr = node.pointer;
-                match node.opcode {
+                match &node.opcode {
                     IROp::Breakpoint => {
                         bytecodes.push(Bytecode2 {
                             opcode: OpCode2::Breakpoint,
@@ -72,7 +70,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                                 bytecodes.push(Bytecode2 {
                                     opcode: OpCode2::AddAdd,
                                     delta,
-                                    val: val1,
+                                    val: *val1,
                                     addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
                                 });
                                 i += 2;
@@ -84,7 +82,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                                 bytecodes.push(Bytecode2 {
                                     opcode: OpCode2::AddSet,
                                     delta,
-                                    val: val1,
+                                    val: *val1,
                                     addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
                                 });
                                 i += 2;
@@ -94,7 +92,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                                 bytecodes.push(Bytecode2 {
                                     opcode: OpCode2::SingleAdd,
                                     delta,
-                                    val: val1,
+                                    val: *val1,
                                     addr: 0,
                                 });
                             }
@@ -108,7 +106,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                                 bytecodes.push(Bytecode2 {
                                     opcode: OpCode2::SetAdd,
                                     delta,
-                                    val: val1,
+                                    val: *val1,
                                     addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
                                 });
                                 i += 2;
@@ -120,7 +118,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                                 bytecodes.push(Bytecode2 {
                                     opcode: OpCode2::SetSet,
                                     delta,
-                                    val: val1,
+                                    val: *val1,
                                     addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
                                 });
                                 i += 2;
@@ -130,7 +128,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                                 bytecodes.push(Bytecode2 {
                                     opcode: OpCode2::SingleSet,
                                     delta,
-                                    val: val1,
+                                    val: *val1,
                                     addr: 0,
                                 });
                             }
@@ -138,7 +136,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                     }
 
                     IROp::Shift(step) => {
-                        if let Ok(step_i8) = i8::try_from(step) {
+                        if let Ok(step_i8) = i8::try_from(*step) {
                             match ir[i + 1] {
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
                                     let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
@@ -171,8 +169,29 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                             opcode: OpCode2::Shift,
                             delta,
                             val: 0,
-                            addr: step as i32 as u32,
+                            addr: *step as i32 as u32,
                         });
+                    }
+                    IROp::MulAndSetZero(dests) => {
+                        let skip_pc = (bytecodes.len() + dests.len() + 2) as u32;
+
+                        bytecodes.push(Bytecode2 {
+                            opcode: OpCode2::MulStart,
+                            delta,
+                            val: 0,
+                            addr: skip_pc,
+                        });
+
+                        for (dest_ptr, dest_val) in dests {
+                            let delta = i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
+                            last_ptr = *dest_ptr;
+                            bytecodes.push(Bytecode2 {
+                                opcode: OpCode2::Mul,
+                                delta,
+                                val: *dest_val,
+                                addr: 0,
+                            });
+                        }
                     }
 
                     IROp::In => {
@@ -233,7 +252,6 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                             addr: 0
                         });
                     }
-                    _ => { unimplemented!() }
                 }
             }
         }

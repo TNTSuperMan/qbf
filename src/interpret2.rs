@@ -14,6 +14,7 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
     let mut stdout = stdout().lock();
     let mut pc: usize = 0;
     let mut pointer: isize = 0;
+    let mut mul_val: u8 = 0;
     
     loop {
         let bytecode = &insts[pc];
@@ -78,6 +79,19 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.set(pointer, val)?;
+            }
+
+            OpCode2::MulStart => {
+                let val = memory.get(pointer)?;
+                if val == 0 {
+                    pc = bytecode.addr as usize;
+                } else {
+                    mul_val = val;
+                    memory.set(pointer, 0)?;
+                }
+            }
+            OpCode2::Mul => {
+                memory.set(pointer, memory.get(pointer)?.wrapping_add(mul_val.wrapping_mul(bytecode.val)))?;
             }
 
             OpCode2::In => {
