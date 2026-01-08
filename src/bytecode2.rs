@@ -212,15 +212,16 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                             addr: (start + 1) as u32,
                         });
                     }
-                    IROp::LoopEndWithOffset(_start, _offset) => {
+                    IROp::LoopEndWithOffset(_start, offset) => {
                         let start = loop_stack.pop().unwrap();
                         let end = bytecodes.len();
-                        bytecodes[start].addr = end as u32;
+                        last_ptr -= offset;
+                        bytecodes[start].addr = (end + 1) as u32;
                         bytecodes.push(Bytecode2 {
                             opcode: OpCode2::JmpIfNotZero,
                             delta,
                             val: 0,
-                            addr: start as u32,
+                            addr: (start + 1) as u32,
                         });
                     }
 
