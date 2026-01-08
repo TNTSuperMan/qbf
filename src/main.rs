@@ -118,7 +118,6 @@ fn main() {
                     fs::write("./box/ssa_opt1", format!("{:?}", one_round)).expect("failed to write");
                     fs::write("./box/ssa_opt2", format!("{:?}", two_round)).expect("failed to write");
                     fs::write("./box/eval_order", format!("{:?}", resolve_eval_order(&two_round))).expect("failed to write");
-
                 }
             }
         }
