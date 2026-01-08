@@ -22,7 +22,7 @@ fn indent(level: usize) -> String {
     vec![""; level+1].join("    ")
 }
 
-pub fn instructions_to_string(bytecodes: Vec<Bytecode>, m: OperationCountMap) -> String {
+pub fn instructions_to_string(bytecodes: &[Bytecode], m: &OperationCountMap) -> String {
     let mut strings: Vec<String> = Vec::new();
     let mut lv: usize = 0;
     for (i, b) in bytecodes.iter().enumerate() {

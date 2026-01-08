@@ -102,7 +102,7 @@ fn main() {
                     #[cfg(feature = "debug")] {
                         use std::fs;
                         use crate::trace::instructions_to_string;
-                        fs::write("./box/bytecodes", instructions_to_string(bytecodes, ocm)).expect("failed to write");
+                        fs::write("./box/bytecodes", instructions_to_string(&bytecodes, &ocm)).expect("failed to write");
                     }
                 }
 
