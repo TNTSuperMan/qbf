@@ -94,6 +94,10 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
             OpCode2::Mul => {
                 memory.set(pointer, memory.get(pointer)?.wrapping_add(mul_val.wrapping_mul(bytecode.val)))?;
             }
+            OpCode2::MulLast => {
+                memory.set(pointer, memory.get(pointer)?.wrapping_add(mul_val.wrapping_mul(bytecode.val)))?;
+                pointer += bytecode.addr as i32 as isize;
+            }
 
             OpCode2::In => {
                 memory.set(pointer, 0)?;
