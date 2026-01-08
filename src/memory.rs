@@ -44,4 +44,9 @@ impl Memory {
     pub unsafe fn set_unchecked(&mut self, index: usize, value: u8) {
         *self.0.as_mut_ptr().add(index) = value;
     }
+    #[inline(always)]
+    pub unsafe fn add_unchecked(&mut self, index: usize, value: u8) {
+        let ptr = self.0.as_mut_ptr().add(index);
+        *ptr = (*ptr).wrapping_add(value);
+    }
 }
