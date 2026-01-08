@@ -1,12 +1,14 @@
 use std::time::Instant;
 
-use crate::{bytecode::ir_to_bytecodes, interpret::run, ir::parse_to_ir, memory::StaticMemory, trace::OperationCountMap};
+use crate::{bytecode::ir_to_bytecodes, bytecode2::ir_to_bytecodes2, interpret::run, interpret2::run2, ir::parse_to_ir, memory::StaticMemory, trace::OperationCountMap};
 use clap::Parser;
 
 mod memory;
 mod ir;
 mod bytecode;
+mod bytecode2;
 mod interpret;
+mod interpret2;
 mod trace;
 mod ssa;
 
@@ -21,6 +23,9 @@ struct Args {
     
     #[arg(short, long)]
     benchmark_count: Option<usize>,
+
+    #[arg(short, long)]
+    use_next_bytecode: bool,
 }
 
 fn main() {
@@ -32,6 +37,9 @@ fn main() {
         }
         Ok(code) => {
             if let Some(count) = args.benchmark_count {
+                if args.use_next_bytecode {
+                    eprintln!("Error: --use-next-bytecode not implemented with --benchmark-count")
+                }
                 match parse_to_ir(&code) {
                     Ok(_ir) => {},
                     Err(msg) => {
@@ -70,21 +78,41 @@ fn main() {
                         return;
                     }
                 };
-                let bytecodes = ir_to_bytecodes(ir.clone());
 
-                let mut ocm = OperationCountMap::new(bytecodes.len());
                 let mut memory = StaticMemory::new();
 
-                let result = run(bytecodes.clone(), &mut memory, &mut ocm);
-                if let Err(err) = result.clone() {
-                    eprintln!("{}", err);
+                if args.use_next_bytecode {
+                    let bytecodes = match ir_to_bytecodes2(ir.clone()) {
+                        Ok(b) => b,
+                        Err(msg) => {
+                            eprintln!("{}", msg);
+                            return;
+                        }
+                    };
+                    if let Err(msg) = run2(bytecodes.clone(), &mut memory) {
+                        eprintln!("{}", msg);
+                    }
+                    #[cfg(feature = "debug")] {
+                        use std::fs;
+                        fs::write("./box/bytecodes", format!("{:?}", bytecodes)).expect("failed to write");
+                    }
+                } else {
+                    let bytecodes = ir_to_bytecodes(ir.clone());
+                    let mut ocm = OperationCountMap::new(bytecodes.len());
+                    if let Err(msg) = run(bytecodes.clone(), &mut memory, &mut ocm) {
+                        eprintln!("{}", msg);
+                    }
+                    #[cfg(feature = "debug")] {
+                        use std::fs;
+                        use crate::trace::instructions_to_string;
+                        fs::write("./box/bytecodes", instructions_to_string(bytecodes, ocm)).expect("failed to write");
+                    }
                 }
 
                 #[cfg(feature = "debug")] {
-                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::instructions_to_string};
+                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}};
                     use std::fs;
                     fs::write("./box/memory", *memory.0).expect("failed to write");
-                    fs::write("./box/bytecodes", instructions_to_string(bytecodes, ocm)).expect("failed to write");
                     let mut noend_ir = ir.clone();
                     noend_ir.pop();
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
