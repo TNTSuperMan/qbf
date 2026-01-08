@@ -85,6 +85,7 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
                 let val = memory.get(pointer)?;
                 if val == 0 {
                     pc = bytecode.addr as usize;
+                    continue;
                 } else {
                     mul_val = val;
                     memory.set(pointer, 0)?;
