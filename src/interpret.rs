@@ -2,7 +2,7 @@ use std::{io::{Write, stdout}};
 
 use crate::{bytecode::{Bytecode, OpCode}, memory::Memory, trace::OperationCountMap};
 
-pub fn run(insts: Vec<Bytecode>, memory: &mut impl Memory, map: &mut OperationCountMap) -> Result<(), String> {
+pub fn run(insts: Vec<Bytecode>, memory: &mut Memory, map: &mut OperationCountMap) -> Result<(), String> {
     let mut stdout = stdout().lock();
     let mut pc: usize = 0;
     let mut offset: isize = 0;
@@ -42,10 +42,7 @@ pub fn run(insts: Vec<Bytecode>, memory: &mut impl Memory, map: &mut OperationCo
                 }
             }
             OpCode::Mul => {
-                let mul_val = memory.get(ptr)?.wrapping_add(
-                    mul_cache.wrapping_mul(bytecode.val)
-                );
-                memory.set(ptr, mul_val)?;
+                memory.add(ptr, mul_cache.wrapping_mul(bytecode.val))?;
             }
             OpCode::AddFromMemory => {
                 memory.add(ptr, mul_cache)?;

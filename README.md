@@ -8,7 +8,6 @@ A quickly Brainfuck runtime.
 ```bash
 $ qbf mandel.bf
 $ qbf long.bf --benchmark-count=16
-# qbf test.bf --memory-size=32768 # comming soon
 ```
 
 ## Benchmark

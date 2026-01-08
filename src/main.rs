@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::{bytecode::ir_to_bytecodes, bytecode2::ir_to_bytecodes2, interpret::run, interpret2::run2, ir::parse_to_ir, memory::StaticMemory, trace::OperationCountMap};
+use crate::{bytecode::ir_to_bytecodes, bytecode2::ir_to_bytecodes2, interpret::run, interpret2::run2, ir::parse_to_ir, memory::Memory, trace::OperationCountMap};
 use clap::Parser;
 
 mod memory;
@@ -17,9 +17,6 @@ mod ssa;
 struct Args {
     #[arg(value_name = "FILE")]
     file: String,
-
-    // #[arg(short, long, default_value_t = 65536)]
-    // memory_size: usize,
     
     #[arg(short, long)]
     benchmark_count: Option<usize>,
@@ -56,7 +53,7 @@ fn main() {
                     let bytecodes = ir_to_bytecodes(ir);
 
                     let mut ocm = OperationCountMap::new(bytecodes.len());
-                    let mut memory = StaticMemory::new();
+                    let mut memory = Memory::new();
                     
                     let result = run(bytecodes.clone(), &mut memory, &mut ocm);
                     if let Err(err) = result.clone() {
@@ -79,7 +76,7 @@ fn main() {
                     }
                 };
 
-                let mut memory = StaticMemory::new();
+                let mut memory = Memory::new();
 
                 if args.use_next_bytecode {
                     let bytecodes = match ir_to_bytecodes2(ir.clone()) {
