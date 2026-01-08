@@ -173,7 +173,7 @@ pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
                         });
                     }
                     IROp::MulAndSetZero(dests) => {
-                        let skip_pc = (bytecodes.len() + dests.len() + 2) as u32;
+                        let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
 
                         bytecodes.push(Bytecode2 {
                             opcode: OpCode2::MulStart,
