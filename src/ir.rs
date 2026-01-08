@@ -25,8 +25,8 @@ pub enum IROp {
 }
 
 pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
-    let mut insts: Vec<IR> = Vec::new();
-    let mut loop_stack: Vec<usize> = Vec::new();
+    let mut insts: Vec<IR> = vec![];
+    let mut loop_stack: Vec<usize> = vec![];
     let mut pointer: isize = 0;
 
     let mut is_flat: bool = true; // LoopEnd時に確定します

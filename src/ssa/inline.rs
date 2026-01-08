@@ -19,7 +19,7 @@ impl PointerSSAHistory {
 pub fn inline_ssa_history(history_map: &PointerSSAHistory) -> PointerSSAHistory {
     let mut inlined_history_map: PointerSSAHistory = PointerSSAHistory::new();
     for (ptr, history) in history_map.iter() {
-        let mut inlined_history: Vec<SSAOp> = Vec::new();
+        let mut inlined_history: Vec<SSAOp> = vec![];
         for h in history {
             match h {
                 SSAOp::raw(_raw_ptr) => {}
