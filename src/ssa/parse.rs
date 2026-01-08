@@ -1,9 +1,9 @@
 use crate::{ir::{IR, IROp}, ssa::{SSAOp, PointerSSAHistory, PointerVersion}};
 
-pub fn build_ssa_from_ir(ir_arr: &[IR]) -> Option<PointerSSAHistory> {
+pub fn build_ssa_from_ir(ir_nodes: &[IR]) -> Option<PointerSSAHistory> {
     let mut ssa_history: PointerSSAHistory = PointerSSAHistory::new();
 
-    for ir in ir_arr {
+    for ir in ir_nodes {
         match &ir.opcode {
             IROp::Add(val) => {
                 let current_history = ssa_history.get_history_mut(ir.pointer);

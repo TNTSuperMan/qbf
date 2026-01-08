@@ -37,7 +37,7 @@ pub enum OpCode2 {
     End,
 }
 
-pub fn ir_to_bytecodes2(ir: &[IR]) -> Result<Vec<Bytecode2>, String> {
+pub fn ir_to_bytecodes2(ir_nodes: &[IR]) -> Result<Vec<Bytecode2>, String> {
     let mut bytecodes: Vec<Bytecode2> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
 
@@ -45,7 +45,7 @@ pub fn ir_to_bytecodes2(ir: &[IR]) -> Result<Vec<Bytecode2>, String> {
     let mut last_ptr = 0isize;
 
     loop {
-        match ir.get(i) {
+        match ir_nodes.get(i) {
             None => {
                 // Finalize?
                 return Ok(bytecodes);
@@ -64,7 +64,7 @@ pub fn ir_to_bytecodes2(ir: &[IR]) -> Result<Vec<Bytecode2>, String> {
                     }
 
                     IROp::Add(val1) => {
-                        match ir[i + 1] {
+                        match ir_nodes[i + 1] {
                             IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                 last_ptr = ptr2;
@@ -100,7 +100,7 @@ pub fn ir_to_bytecodes2(ir: &[IR]) -> Result<Vec<Bytecode2>, String> {
                         }
                     }
                     IROp::Set(val1) => {
-                        match ir[i + 1] {
+                        match ir_nodes[i + 1] {
                             IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                 last_ptr = ptr2;
@@ -138,7 +138,7 @@ pub fn ir_to_bytecodes2(ir: &[IR]) -> Result<Vec<Bytecode2>, String> {
 
                     IROp::Shift(step) => {
                         if let Ok(step_i8) = i8::try_from(*step) {
-                            match ir[i + 1] {
+                            match ir_nodes[i + 1] {
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
                                     let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
