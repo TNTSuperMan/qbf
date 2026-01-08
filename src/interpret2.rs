@@ -26,19 +26,19 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
             }
 
             OpCode2::SingleAdd => {
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(bytecode.val))?;
+                memory.add(pointer, bytecode.val)?;
             }
             OpCode2::SingleSet => {
                 memory.set(pointer, bytecode.val)?;
             }
             OpCode2::AddAdd => {
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(bytecode.val))?;
+                memory.add(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(val))?;
+                memory.add(pointer, val)?;
             }
             OpCode2::AddSet => {
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(bytecode.val))?;
+                memory.add(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.set(pointer, val)?;
@@ -47,7 +47,7 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
                 memory.set(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(val))?;
+                memory.add(pointer, val)?;
             }
             OpCode2::SetSet => {
                 memory.set(pointer, bytecode.val)?;
@@ -69,7 +69,7 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
                 }
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(val))?;
+                memory.add(pointer, val)?;
             }
             OpCode2::ShiftSet => {
                 let step = bytecode.val as i8 as isize;
@@ -92,10 +92,10 @@ pub fn run2(insts: Vec<Bytecode2>, memory: &mut impl Memory) -> Result<(), Strin
                 }
             }
             OpCode2::Mul => {
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(mul_val.wrapping_mul(bytecode.val)))?;
+                memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
             }
             OpCode2::MulLast => {
-                memory.set(pointer, memory.get(pointer)?.wrapping_add(mul_val.wrapping_mul(bytecode.val)))?;
+                memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
                 pointer += bytecode.addr as i32 as isize;
             }
 

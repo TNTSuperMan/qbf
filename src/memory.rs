@@ -1,6 +1,7 @@
 pub trait Memory {
     fn get(&self, index: isize) -> Result<u8, String>;
     fn set(&mut self, index: isize, value: u8) -> Result<(), String>;
+    fn add(&mut self, index: isize, value: u8) -> Result<(), String>;
     unsafe fn get_unchecked(&self, index: usize) -> u8;
     unsafe fn set_unchecked(&mut self, index: usize, value: u8);
 }
@@ -29,6 +30,17 @@ impl Memory for StaticMemory {
                 Ok(())
             },
             None => Err(format!("Runtime Error: Out of range memory write, Address: {}", index)),
+        }
+    }
+    fn add(&mut self, index: isize, value: u8) -> Result<(), String> {
+        if self.0.len() <= index as usize {
+            Err(format!("Runtime Error: Out of range memory read, Address: {}", index))
+        } else {
+            unsafe { // SAFETY: 直前に範囲を確認済み
+                let ptr = self.0.as_mut_ptr().add(index as usize);
+                *ptr = (*ptr).wrapping_add(value);
+            }
+            Ok(())
         }
     }
     unsafe fn get_unchecked(&self, index: usize) -> u8 {

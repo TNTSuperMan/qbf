@@ -21,8 +21,7 @@ pub fn run(insts: Vec<Bytecode>, memory: &mut impl Memory, map: &mut OperationCo
             }
 
             OpCode::Add => {
-                let add_res = memory.get(ptr)?.wrapping_add(bytecode.val);
-                memory.set(ptr, add_res)?;
+                memory.add(ptr, bytecode.val)?;
             }
             OpCode::Set => {
                 memory.set(ptr, bytecode.val)?;
@@ -49,19 +48,13 @@ pub fn run(insts: Vec<Bytecode>, memory: &mut impl Memory, map: &mut OperationCo
                 memory.set(ptr, mul_val)?;
             }
             OpCode::AddFromMemory => {
-                let add_val = memory.get(ptr)?.wrapping_add(mul_cache);
-                memory.set(ptr, add_val)?;
+                memory.add(ptr, mul_cache)?;
             }
             OpCode::SingleMul => {
                 let ptr2 = offset.wrapping_add(bytecode.ptr2);
                 let ptr2_val = memory.get(ptr2)?;
                 if ptr2_val != 0 {
-                    let mul_val = memory.get(ptr)?.wrapping_add(
-                        ptr2_val.wrapping_mul(
-                            bytecode.val
-                        )
-                    );
-                    memory.set(ptr, mul_val)?;
+                    memory.add(ptr, ptr2_val.wrapping_mul(bytecode.val))?;
                     memory.set(ptr2, 0)?;
                 }
             }
@@ -69,8 +62,7 @@ pub fn run(insts: Vec<Bytecode>, memory: &mut impl Memory, map: &mut OperationCo
                 let ptr2 = offset.wrapping_add(bytecode.ptr2);
                 let ptr2_val = memory.get(ptr2)?;
                 if ptr2_val != 0 {
-                    let add_val = memory.get(ptr)?.wrapping_add(ptr2_val);
-                    memory.set(ptr, add_val)?;
+                    memory.add(ptr, ptr2_val)?;
                     memory.set(ptr2, 0)?;
                 }
             }
