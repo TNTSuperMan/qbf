@@ -38,12 +38,12 @@ pub enum OpCode {
     End,
 }
 
-pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
+pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Vec<Bytecode> {
     let mut bytecodes: Vec<Bytecode> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
 
-    for ir in ir {
-        match ir.opcode {
+    for ir in ir_nodes {
+        match &ir.opcode {
             IROp::Breakpoint => {
                 bytecodes.push(Bytecode {
                     opcode: OpCode::Breakpoint,
@@ -58,7 +58,7 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
             IROp::Add(val) => {
                 bytecodes.push(Bytecode {
                     opcode: OpCode::Add,
-                    val,
+                    val: *val,
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
@@ -69,7 +69,7 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
             IROp::Set(val) => {
                 bytecodes.push(Bytecode {
                     opcode: OpCode::Set,
-                    val,
+                    val: *val,
                     ptr: ir.pointer,
                     ptr2: 0,
                     addr: 0,
@@ -78,12 +78,12 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                 });
             }
             
-            IROp::Shift(s) => {
+            IROp::Shift(step) => {
                 bytecodes.push(Bytecode {
                     opcode: OpCode::Shift,
                     val: 0,
                     ptr: ir.pointer,
-                    ptr2: s,
+                    ptr2: *step,
                     addr: 0,
                     _padding1: 0,
                     _padding2: 0,
@@ -140,7 +140,7 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                             bytecodes.push(Bytecode {
                                 opcode: OpCode::AddFromMemory,
                                 val: 0,
-                                ptr,
+                                ptr: *ptr,
                                 ptr2: 0,
                                 addr: 0,
                                 _padding1: 0,
@@ -150,8 +150,8 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                         _ => {
                             bytecodes.push(Bytecode {
                                 opcode: OpCode::Mul,
-                                val,
-                                ptr,
+                                val: *val,
+                                ptr: *ptr,
                                 ptr2: 0,
                                 addr: 0,
                                 _padding1: 0,
@@ -219,7 +219,7 @@ pub fn ir_to_bytecodes(ir: Vec<IR>) -> Vec<Bytecode> {
                     opcode: OpCode::LoopEndWithOffset,
                     val: 0,
                     ptr: ir.pointer,
-                    ptr2: offset,
+                    ptr2: *offset,
                     addr: start + 1,
                     _padding1: 0,
                     _padding2: 0,

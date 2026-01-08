@@ -10,7 +10,7 @@ fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
     )
 }
 
-pub fn run2(insts: Vec<Bytecode2>, memory: &mut Memory) -> Result<(), String> {
+pub fn run2(insts: &[Bytecode2], memory: &mut Memory) -> Result<(), String> {
     let mut stdout = stdout().lock();
     let mut pc: usize = 0;
     let mut pointer: isize = 0;

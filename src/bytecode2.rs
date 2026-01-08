@@ -37,7 +37,7 @@ pub enum OpCode2 {
     End,
 }
 
-pub fn ir_to_bytecodes2(ir: Vec<IR>) -> Result<Vec<Bytecode2>, String> {
+pub fn ir_to_bytecodes2(ir: &[IR]) -> Result<Vec<Bytecode2>, String> {
     let mut bytecodes: Vec<Bytecode2> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
 

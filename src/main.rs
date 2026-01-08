@@ -50,12 +50,12 @@ fn main() {
                     let start = Instant::now();
 
                     let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
-                    let bytecodes = ir_to_bytecodes(ir);
+                    let bytecodes = ir_to_bytecodes(&ir);
 
                     let mut ocm = OperationCountMap::new(bytecodes.len());
                     let mut memory = Memory::new();
                     
-                    let result = run(bytecodes.clone(), &mut memory, &mut ocm);
+                    let result = run(&bytecodes, &mut memory, &mut ocm);
                     if let Err(err) = result.clone() {
                         eprintln!("{}", err);
                         return;
@@ -79,14 +79,14 @@ fn main() {
                 let mut memory = Memory::new();
 
                 if args.use_next_bytecode {
-                    let bytecodes = match ir_to_bytecodes2(ir.clone()) {
+                    let bytecodes = match ir_to_bytecodes2(&ir) {
                         Ok(b) => b,
                         Err(msg) => {
                             eprintln!("{}", msg);
                             return;
                         }
                     };
-                    if let Err(msg) = run2(bytecodes.clone(), &mut memory) {
+                    if let Err(msg) = run2(&bytecodes, &mut memory) {
                         eprintln!("{}", msg);
                     }
                     #[cfg(feature = "debug")] {
@@ -94,9 +94,9 @@ fn main() {
                         fs::write("./box/bytecodes", format!("{:?}", bytecodes)).expect("failed to write");
                     }
                 } else {
-                    let bytecodes = ir_to_bytecodes(ir.clone());
+                    let bytecodes = ir_to_bytecodes(&ir);
                     let mut ocm = OperationCountMap::new(bytecodes.len());
-                    if let Err(msg) = run(bytecodes.clone(), &mut memory, &mut ocm) {
+                    if let Err(msg) = run(&bytecodes, &mut memory, &mut ocm) {
                         eprintln!("{}", msg);
                     }
                     #[cfg(feature = "debug")] {
