@@ -12,7 +12,7 @@ pub enum IROp {
     Set(u8),
 
     Shift(isize),
-    MulAndSetZero(Vec<(isize, u8)>),
+    MulAndSetZero(Box<[(isize, u8)]>),
 
     In,
     Out,
@@ -126,7 +126,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                                 dests.remove(decrement_pos);
                                 insts.truncate(start);
 
-                                push_inst!(IROp::MulAndSetZero(dests.to_vec()));
+                                push_inst!(IROp::MulAndSetZero(dests.clone().into_boxed_slice()));
                                 continue;
                             }
                         }
