@@ -122,7 +122,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                     }).collect();
                     if let Ok(dests) = dests_res.as_mut() {
                         if let Some(decrement_pos) = dests.iter().position(|&dest| dest == (pointer, 255)) {
-                            if !dests.iter().all(|&(ptr, _)| ptr == pointer) {
+                            if dests.iter().all(|&(ptr, _)| ptr != pointer) {
                                 dests.remove(decrement_pos);
                                 insts.truncate(start);
 
