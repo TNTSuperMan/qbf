@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct IR {
     pub pointer: isize,
     pub opcode: IROp,
@@ -107,7 +107,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                 } else if is_flat {
                     is_flat = false;
 
-                    if children.len() == 1 && children[0].opcode == IROp::Add(255) {
+                    if children == [IR { opcode: IROp::Add(255), pointer }] {
                         insts.truncate(start);
                         push_inst!(IROp::Set(0));
                         continue;
