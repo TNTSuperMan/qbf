@@ -1,6 +1,6 @@
 use std::io::{Write, stdout};
 
-use crate::{bytecode::{Bytecode2, OpCode2}, memory::Memory};
+use crate::{bytecode::{Bytecode, OpCode}, memory::Memory, trace::OperationCountMap};
 
 #[inline(always)]
 fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
@@ -10,59 +10,63 @@ fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
     )
 }
 
-pub fn run(insts: &[Bytecode2], memory: &mut Memory) -> Result<(), String> {
+pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap) -> Result<(), String> {
     let mut stdout = stdout().lock();
     let mut pc: usize = 0;
     let mut pointer: isize = 0;
     let mut mul_val: u8 = 0;
     
     loop {
+        #[cfg(feature = "debug")] {
+            ocm.0[pc] += 1;
+        }
+
         let bytecode = &insts[pc];
         pointer += bytecode.delta as isize;
-        //println!("{},{}",pc,pointer);
+        
         match bytecode.opcode {
-            OpCode2::Breakpoint => {
+            OpCode::Breakpoint => {
                 eprintln!("PC: {}, PTR: {}", pc, pointer);
             }
 
-            OpCode2::SingleAdd => {
+            OpCode::SingleAdd => {
                 memory.add(pointer, bytecode.val)?;
             }
-            OpCode2::SingleSet => {
+            OpCode::SingleSet => {
                 memory.set(pointer, bytecode.val)?;
             }
-            OpCode2::AddAdd => {
+            OpCode::AddAdd => {
                 memory.add(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.add(pointer, val)?;
             }
-            OpCode2::AddSet => {
+            OpCode::AddSet => {
                 memory.add(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.set(pointer, val)?;
             }
-            OpCode2::SetAdd => {
+            OpCode::SetAdd => {
                 memory.set(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.add(pointer, val)?;
             }
-            OpCode2::SetSet => {
+            OpCode::SetSet => {
                 memory.set(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.set(pointer, val)?;
             }
 
-            OpCode2::Shift => {
+            OpCode::Shift => {
                 let step = bytecode.addr as i32 as isize;
                 while memory.get(pointer)? != 0 {
                     pointer += step;
                 }
             }
-            OpCode2::ShiftAdd => {
+            OpCode::ShiftAdd => {
                 let step = bytecode.val as i8 as isize;
                 while memory.get(pointer)? != 0 {
                     pointer += step;
@@ -71,7 +75,7 @@ pub fn run(insts: &[Bytecode2], memory: &mut Memory) -> Result<(), String> {
                 pointer += delta as isize;
                 memory.add(pointer, val)?;
             }
-            OpCode2::ShiftSet => {
+            OpCode::ShiftSet => {
                 let step = bytecode.val as i8 as isize;
                 while memory.get(pointer)? != 0 {
                     pointer += step;
@@ -81,7 +85,7 @@ pub fn run(insts: &[Bytecode2], memory: &mut Memory) -> Result<(), String> {
                 memory.set(pointer, val)?;
             }
 
-            OpCode2::MulStart => {
+            OpCode::MulStart => {
                 let val = memory.get(pointer)?;
                 if val == 0 {
                     pc = bytecode.addr as usize;
@@ -91,35 +95,35 @@ pub fn run(insts: &[Bytecode2], memory: &mut Memory) -> Result<(), String> {
                     memory.set(pointer, 0)?;
                 }
             }
-            OpCode2::Mul => {
+            OpCode::Mul => {
                 memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
             }
-            OpCode2::MulLast => {
+            OpCode::MulLast => {
                 memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
                 pointer += bytecode.addr as i32 as isize;
             }
 
-            OpCode2::In => {
+            OpCode::In => {
                 memory.set(pointer, 0)?;
             }
-            OpCode2::Out => {
+            OpCode::Out => {
                 stdout.write(&[memory.get(pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
             }
 
-            OpCode2::JmpIfZero => {
+            OpCode::JmpIfZero => {
                 if memory.get(pointer)? == 0 {
                     pc = bytecode.addr as usize;
                     continue;
                 }
             }
-            OpCode2::JmpIfNotZero => {
+            OpCode::JmpIfNotZero => {
                 if memory.get(pointer)? != 0 {
                     pc = bytecode.addr as usize;
                     continue;
                 }
             }
 
-            OpCode2::End => {
+            OpCode::End => {
                 return Ok(());
             }
         }
