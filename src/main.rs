@@ -1,14 +1,12 @@
 use std::time::Instant;
 
-use crate::{bytecode::ir_to_bytecodes, bytecode2::ir_to_bytecodes2, interpret::run, interpret2::run2, ir::parse_to_ir, memory::Memory, trace::OperationCountMap};
+use crate::{bytecode::ir_to_bytecodes, interpret::run, ir::parse_to_ir, memory::Memory, trace::OperationCountMap};
 use clap::Parser;
 
 mod memory;
 mod ir;
 mod bytecode;
-mod bytecode2;
 mod interpret;
-mod interpret2;
 mod trace;
 mod ssa;
 
@@ -20,9 +18,6 @@ struct Args {
     
     #[arg(short, long)]
     benchmark_count: Option<usize>,
-
-    #[arg(short, long)]
-    use_next_bytecode: bool,
 }
 
 fn main() {
@@ -43,41 +38,22 @@ fn main() {
                     }
                 };
                 let mut times: Vec<f64> = vec![];
-                if args.use_next_bytecode {
-                    for _ in 0..count {
-                        let start = Instant::now();
+                
+                for _ in 0..count {
+                    let start = Instant::now();
 
-                        let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
-                        let bytecodes = ir_to_bytecodes2(&ir).unwrap();
+                    let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
+                    let bytecodes = ir_to_bytecodes(&ir).unwrap();
 
-                        let mut memory = Memory::new();
-                        
-                        let result = run2(&bytecodes, &mut memory);
-                        if let Err(err) = result.clone() {
-                            eprintln!("{}", err);
-                            return;
-                        }
-
-                        times.push(start.elapsed().as_secs_f64());
+                    let mut memory = Memory::new();
+                    
+                    let result = run(&bytecodes, &mut memory);
+                    if let Err(err) = result.clone() {
+                        eprintln!("{}", err);
+                        return;
                     }
-                } else {
-                    for _ in 0..count {
-                        let start = Instant::now();
 
-                        let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
-                        let bytecodes = ir_to_bytecodes(&ir);
-
-                        let mut ocm = OperationCountMap::new(bytecodes.len());
-                        let mut memory = Memory::new();
-                        
-                        let result = run(&bytecodes, &mut memory, &mut ocm);
-                        if let Err(err) = result.clone() {
-                            eprintln!("{}", err);
-                            return;
-                        }
-
-                        times.push(start.elapsed().as_secs_f64());
-                    }
+                    times.push(start.elapsed().as_secs_f64());
                 }
 
 
@@ -95,32 +71,19 @@ fn main() {
 
                 let mut memory = Memory::new();
 
-                if args.use_next_bytecode {
-                    let bytecodes = match ir_to_bytecodes2(&ir) {
-                        Ok(b) => b,
-                        Err(msg) => {
-                            eprintln!("{}", msg);
-                            return;
-                        }
-                    };
-                    if let Err(msg) = run2(&bytecodes, &mut memory) {
+                let bytecodes = match ir_to_bytecodes(&ir) {
+                    Ok(b) => b,
+                    Err(msg) => {
                         eprintln!("{}", msg);
+                        return;
                     }
-                    #[cfg(feature = "debug")] {
-                        use std::fs;
-                        fs::write("./box/bytecodes", format!("{:?}", bytecodes)).expect("failed to write");
-                    }
-                } else {
-                    let bytecodes = ir_to_bytecodes(&ir);
-                    let mut ocm = OperationCountMap::new(bytecodes.len());
-                    if let Err(msg) = run(&bytecodes, &mut memory, &mut ocm) {
-                        eprintln!("{}", msg);
-                    }
-                    #[cfg(feature = "debug")] {
-                        use std::fs;
-                        use crate::trace::instructions_to_string;
-                        fs::write("./box/bytecodes", instructions_to_string(&bytecodes, &ocm)).expect("failed to write");
-                    }
+                };
+                if let Err(msg) = run(&bytecodes, &mut memory) {
+                    eprintln!("{}", msg);
+                }
+                #[cfg(feature = "debug")] {
+                    use std::fs;
+                    fs::write("./box/bytecodes", format!("{:?}", bytecodes)).expect("failed to write");
                 }
 
                 #[cfg(feature = "debug")] {
