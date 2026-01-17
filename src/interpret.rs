@@ -1,4 +1,4 @@
-use std::io::{Write, stdout};
+use std::io::{Read, Write, stdin, stdout};
 
 use crate::{bytecode::{Bytecode, OpCode}, memory::Memory, trace::OperationCountMap};
 
@@ -12,6 +12,8 @@ fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
 
 pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap) -> Result<(), String> {
     let mut stdout = stdout().lock();
+    let mut stdin = stdin().lock();
+    let mut stdin_buf: [u8; 1] = [0];
     let mut pc: usize = 0;
     let mut pointer: isize = 0;
     let mut mul_val: u8 = 0;
@@ -104,7 +106,10 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
             }
 
             OpCode::In => {
-                memory.set(pointer, 0)?;
+                match stdin.read_exact(&mut stdin_buf) {
+                    Ok(_) => memory.set(pointer, stdin_buf[0])?,
+                    Err(_) => memory.set(pointer, 0)?,
+                }
             }
             OpCode::Out => {
                 stdout.write(&[memory.get(pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
