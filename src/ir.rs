@@ -89,7 +89,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                 push_inst!(IROp::LoopStart(usize::MAX));
             }
             ']' => {
-                let start = loop_stack.pop().ok_or("Syntax Error: Unmatched closing bracket")?;
+                let start = loop_stack.pop().ok_or_else(|| "Syntax Error: Unmatched closing bracket")?;
                 let start_ptr = insts[start].pointer;
                 let end = insts.len();
                 let end_ptr = pointer;
