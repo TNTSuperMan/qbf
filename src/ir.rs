@@ -13,6 +13,7 @@ pub enum IROp {
 
     Shift(isize),
     MulAndSetZero(Box<[(isize, u8)]>),
+    MoveAdd(isize),
 
     In,
     Out,
@@ -125,6 +126,13 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                             dests.remove(decrement_pos);
                             if dests.iter().all(|&(ptr, _)| ptr != pointer) {
                                 insts.truncate(start);
+
+                                if dests.len() == 1 {
+                                    if dests[0].1 == 1 {
+                                        push_inst!(IROp::MoveAdd(dests[0].0));
+                                        continue;
+                                    }
+                                }
 
                                 push_inst!(IROp::MulAndSetZero(dests.clone().into_boxed_slice()));
                                 continue;

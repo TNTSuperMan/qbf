@@ -30,6 +30,8 @@ pub enum OpCode {
     Mul,
     MulLast,
 
+    MoveAdd,
+
     In,
     Out,
 
@@ -59,6 +61,8 @@ impl Debug for Bytecode {
             OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
             OpCode::Mul => format!("mul {}", self.val),
             OpCode::MulLast => format!("mul {}, {}", self.val, self.addr as i32),
+
+            OpCode::MoveAdd => format!("mvadd {}", self.addr as i32),
 
             OpCode::In => format!("in"),
             OpCode::Out => format!("out"),
@@ -240,6 +244,14 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                         });
 
                         last_ptr = node.pointer;
+                    }
+                    IROp::MoveAdd(dest) => {
+                        bytecodes.push(Bytecode {
+                            opcode: OpCode::MoveAdd,
+                            delta,
+                            val: 0,
+                            addr: i32::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")? as u32,
+                        });
                     }
 
                     IROp::In => {
