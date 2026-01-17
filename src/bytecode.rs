@@ -1,6 +1,8 @@
-use crate::ir::{IR, IROp};
+use std::fmt::Debug;
 
-#[derive(Clone, Debug)]
+use crate::{interpret::u32_to_delta_and_val, ir::{IR, IROp}};
+
+#[derive(Clone)]
 pub struct Bytecode {
     pub opcode: OpCode,
     pub delta: i16,
@@ -35,6 +37,40 @@ pub enum OpCode {
     JmpIfNotZero, // LoopEnd
 
     End,
+}
+
+impl Debug for Bytecode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (delta2, val2) = u32_to_delta_and_val(self.addr);
+        let op = match self.opcode {
+            OpCode::Breakpoint => format!("brk"),
+
+            OpCode::SingleAdd => format!("add {}", self.val),
+            OpCode::SingleSet => format!("set {}", self.val),
+            OpCode::AddAdd => format!("add {}, {} add {}", self.val, delta2, val2),
+            OpCode::AddSet => format!("add {}, {} set {}", self.val, delta2, val2),
+            OpCode::SetAdd => format!("set {}, {} add {}", self.val, delta2, val2),
+            OpCode::SetSet => format!("set {}, {} set {}", self.val, delta2, val2),
+
+            OpCode::Shift => format!("shift {}", self.addr as i32),
+            OpCode::ShiftAdd => format!("shift {}, {} add {}", self.val as i8, delta2, val2),
+            OpCode::ShiftSet => format!("shift {}, {} set {}", self.val as i8, delta2, val2),
+
+            OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
+            OpCode::Mul => format!("mul {}", self.val),
+            OpCode::MulLast => format!("mul {}, {}", self.val, self.addr as i32),
+
+            OpCode::In => format!("in"),
+            OpCode::Out => format!("out"),
+
+            OpCode::JmpIfZero => format!("jpz {}", self.addr),
+            OpCode::JmpIfNotZero => format!("jpnz {}", self.addr),
+
+            OpCode::End => format!("end"),
+        };
+
+        f.write_str(&format!("{} {}", self.delta, op))
+    }
 }
 
 pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {

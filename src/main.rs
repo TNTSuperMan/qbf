@@ -95,10 +95,9 @@ fn main() {
                 }
 
                 #[cfg(feature = "debug")] {
-                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}};
+                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::generate_bytecode_trace};
                     use std::fs;
-                    fs::write("./box/bytecodes", format!("{:?}", bytecodes)).expect("failed to write");
-                    fs::write("./box/freq", format!("{:?}", ocm.0)).expect("failed to write");
+                    fs::write("./box/bytecodes", generate_bytecode_trace(&bytecodes, &ocm)).expect("failed to write");
                     fs::write("./box/memory", *memory.0).expect("failed to write");
                     let noend_ir = &ir[0..ir.len()-1];
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());

@@ -3,7 +3,7 @@ use std::io::{Read, Write, stdin, stdout};
 use crate::{bytecode::{Bytecode, OpCode}, memory::Memory, trace::OperationCountMap};
 
 #[inline(always)]
-fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
+pub fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
     (
         (val & 0xFFFF) as u16 as i16,
         (val >> 16) as u8,
