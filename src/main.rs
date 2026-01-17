@@ -34,9 +34,6 @@ fn main() {
         }
         Ok(code) => {
             if let Some(count) = args.benchmark_count {
-                if args.use_next_bytecode {
-                    eprintln!("Error: --use-next-bytecode not implemented with --benchmark-count")
-                }
                 match parse_to_ir(&code) {
                     Ok(_ir) => {},
                     Err(msg) => {
@@ -46,23 +43,43 @@ fn main() {
                     }
                 };
                 let mut times: Vec<f64> = vec![];
-                for _ in 0..count {
-                    let start = Instant::now();
+                if args.use_next_bytecode {
+                    for _ in 0..count {
+                        let start = Instant::now();
 
-                    let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
-                    let bytecodes = ir_to_bytecodes(&ir);
+                        let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
+                        let bytecodes = ir_to_bytecodes2(&ir).unwrap();
 
-                    let mut ocm = OperationCountMap::new(bytecodes.len());
-                    let mut memory = Memory::new();
-                    
-                    let result = run(&bytecodes, &mut memory, &mut ocm);
-                    if let Err(err) = result.clone() {
-                        eprintln!("{}", err);
-                        return;
+                        let mut memory = Memory::new();
+                        
+                        let result = run2(&bytecodes, &mut memory);
+                        if let Err(err) = result.clone() {
+                            eprintln!("{}", err);
+                            return;
+                        }
+
+                        times.push(start.elapsed().as_secs_f64());
                     }
+                } else {
+                    for _ in 0..count {
+                        let start = Instant::now();
 
-                    times.push(start.elapsed().as_secs_f64());
+                        let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初のparse_to_irで事前に検証済みのため安全
+                        let bytecodes = ir_to_bytecodes(&ir);
+
+                        let mut ocm = OperationCountMap::new(bytecodes.len());
+                        let mut memory = Memory::new();
+                        
+                        let result = run(&bytecodes, &mut memory, &mut ocm);
+                        if let Err(err) = result.clone() {
+                            eprintln!("{}", err);
+                            return;
+                        }
+
+                        times.push(start.elapsed().as_secs_f64());
+                    }
                 }
+
 
                 let mean = times.iter().sum::<f64>() / times.len() as f64;
                 println!("Mean time(sec): {}", mean);
