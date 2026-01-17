@@ -4,7 +4,7 @@ pub struct IR {
     pub opcode: IROp,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum IROp {
     Breakpoint,
 
