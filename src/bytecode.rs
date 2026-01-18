@@ -239,8 +239,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                                 addr: 0,
                             });
                         }
-
-                        last_ptr = node.pointer;
                     }
                     IROp::MovesAndSetZero(dests) => {
                         let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
