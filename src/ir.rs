@@ -149,7 +149,6 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                                             }
                                         }
                                     ).collect::<Vec<(isize, bool)>>();
-                                    println!("{:?}",moves);
 
                                     push_inst!(IROp::MovesAndSetZero(moves.into_boxed_slice()));
                                     continue;
