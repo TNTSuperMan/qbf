@@ -29,6 +29,10 @@ pub enum OpCode {
     MulStart,
     Mul,
 
+    SingleMoveAdd,
+    SingleMoveSub,
+
+    MoveStart,
     MoveAdd,
     MoveSub,
 
@@ -61,8 +65,12 @@ impl Debug for Bytecode {
             OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
             OpCode::Mul => format!("mul {}", self.val),
 
-            OpCode::MoveAdd => format!("mvadd {}", self.addr as i32),
-            OpCode::MoveSub => format!("mvsub {}", self.addr as i32),
+            OpCode::SingleMoveAdd => format!("smadd {}", self.addr as i32),
+            OpCode::SingleMoveSub => format!("smsub {}", self.addr as i32),
+
+            OpCode::MoveStart => format!("mvstart or jmp {}", self.addr as i32),
+            OpCode::MoveAdd => format!("madd"),
+            OpCode::MoveSub => format!("msub"),
 
             OpCode::In => format!("in"),
             OpCode::Out => format!("out"),
@@ -234,9 +242,37 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
 
                         last_ptr = node.pointer;
                     }
+                    IROp::MovesAndSetZero(dests) => {
+                        let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
+
+                        bytecodes.push(Bytecode {
+                            opcode: OpCode::MoveStart,
+                            delta,
+                            val: 0,
+                            addr: skip_pc,
+                        });
+
+                        for (dest_ptr, is_pos) in dests {
+                            if *is_pos {
+                                bytecodes.push(Bytecode {
+                                    opcode: OpCode::MoveAdd,
+                                    delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
+                                    val: 0,
+                                    addr: 0,
+                                });
+                            } else {
+                                bytecodes.push(Bytecode {
+                                    opcode: OpCode::MoveSub,
+                                    delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
+                                    val: 0,
+                                    addr: 0,
+                                });
+                            }
+                        }
+                    }
                     IROp::MoveAdd(dest) => {
                         bytecodes.push(Bytecode {
-                            opcode: OpCode::MoveAdd,
+                            opcode: OpCode::SingleMoveAdd,
                             delta,
                             val: 0,
                             addr: i32::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")? as u32,
@@ -244,7 +280,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                     }
                     IROp::MoveSub(dest) => {
                         bytecodes.push(Bytecode {
-                            opcode: OpCode::MoveSub,
+                            opcode: OpCode::SingleMoveSub,
                             delta,
                             val: 0,
                             addr: i32::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")? as u32,
@@ -309,8 +345,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                             addr: 0
                         });
                     }
-
-                    _ => unimplemented!()
                 }
             }
         }

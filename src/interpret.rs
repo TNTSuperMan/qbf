@@ -111,7 +111,7 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                 memory.add(pointer + bytecode.delta as isize, mul_val.wrapping_mul(bytecode.val))?;
             }
 
-            OpCode::MoveAdd => {
+            OpCode::SingleMoveAdd => {
                 pointer += bytecode.delta as isize;
                 let v = memory.get(pointer)?;
                 if v != 0 {
@@ -119,13 +119,31 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                     memory.add(pointer + (bytecode.addr as i32 as isize), v)?;
                 }
             }
-            OpCode::MoveSub => {
+            OpCode::SingleMoveSub => {
                 pointer += bytecode.delta as isize;
                 let v = memory.get(pointer)?;
                 if v != 0 {
                     memory.set(pointer, 0)?;
                     memory.sub(pointer + (bytecode.addr as i32 as isize), v)?;
                 }
+            }
+
+            OpCode::MoveStart => {
+                pointer += bytecode.delta as isize;
+                let val = memory.get(pointer)?;
+                if val == 0 {
+                    pc = bytecode.addr as usize;
+                    continue;
+                } else {
+                    mul_val = val;
+                    memory.set(pointer, 0)?;
+                }
+            }
+            OpCode::MoveAdd => {
+                memory.add(pointer + bytecode.delta as isize, mul_val)?;
+            }
+            OpCode::MoveSub => {
+                memory.sub(pointer + bytecode.delta as isize, mul_val)?;
             }
 
             OpCode::In => {
