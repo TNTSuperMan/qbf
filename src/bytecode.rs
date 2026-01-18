@@ -322,6 +322,8 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                             addr: 0
                         });
                     }
+
+                    _ => unimplemented!()
                 }
             }
         }

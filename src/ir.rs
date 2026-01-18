@@ -13,6 +13,7 @@ pub enum IROp {
 
     Shift(isize),
     MulAndSetZero(Box<[(isize, u8)]>),
+    MovesAndSetZero(Box<[(isize, bool /* is_positive */)]>),
     MoveAdd(isize),
     MoveSub(isize),
 
@@ -137,6 +138,21 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                                         push_inst!(IROp::MoveSub(dests[0].0));
                                         continue;
                                     }
+                                }
+                                if dests.iter().all(|&(_, val)| val == 1 || val == 255) {
+                                    let moves = dests.iter().map(
+                                        |&(ptr, val)| {
+                                            if val == 1 {
+                                                (ptr, true)
+                                            } else {
+                                                (ptr, false)
+                                            }
+                                        }
+                                    ).collect::<Vec<(isize, bool)>>();
+                                    println!("{:?}",moves);
+
+                                    push_inst!(IROp::MovesAndSetZero(moves.into_boxed_slice()));
+                                    continue;
                                 }
 
                                 push_inst!(IROp::MulAndSetZero(dests.clone().into_boxed_slice()));
