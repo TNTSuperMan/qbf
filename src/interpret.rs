@@ -24,38 +24,44 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
         }
 
         let bytecode = &insts[pc];
-        pointer += bytecode.delta as isize;
         
         match bytecode.opcode {
             OpCode::Breakpoint => {
+                pointer += bytecode.delta as isize;
                 eprintln!("PC: {}, PTR: {}", pc, pointer);
             }
 
             OpCode::SingleAdd => {
+                pointer += bytecode.delta as isize;
                 memory.add(pointer, bytecode.val)?;
             }
             OpCode::SingleSet => {
+                pointer += bytecode.delta as isize;
                 memory.set(pointer, bytecode.val)?;
             }
             OpCode::AddAdd => {
+                pointer += bytecode.delta as isize;
                 memory.add(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.add(pointer, val)?;
             }
             OpCode::AddSet => {
+                pointer += bytecode.delta as isize;
                 memory.add(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.set(pointer, val)?;
             }
             OpCode::SetAdd => {
+                pointer += bytecode.delta as isize;
                 memory.set(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
                 memory.add(pointer, val)?;
             }
             OpCode::SetSet => {
+                pointer += bytecode.delta as isize;
                 memory.set(pointer, bytecode.val)?;
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 pointer += delta as isize;
@@ -63,12 +69,14 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
             }
 
             OpCode::Shift => {
+                pointer += bytecode.delta as isize;
                 let step = bytecode.addr as i32 as isize;
                 while memory.get(pointer)? != 0 {
                     pointer += step;
                 }
             }
             OpCode::ShiftAdd => {
+                pointer += bytecode.delta as isize;
                 let step = bytecode.val as i8 as isize;
                 while memory.get(pointer)? != 0 {
                     pointer += step;
@@ -78,6 +86,7 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                 memory.add(pointer, val)?;
             }
             OpCode::ShiftSet => {
+                pointer += bytecode.delta as isize;
                 let step = bytecode.val as i8 as isize;
                 while memory.get(pointer)? != 0 {
                     pointer += step;
@@ -88,6 +97,7 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
             }
 
             OpCode::MulStart => {
+                pointer += bytecode.delta as isize;
                 let val = memory.get(pointer)?;
                 if val == 0 {
                     pc = bytecode.addr as usize;
@@ -98,14 +108,17 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                 }
             }
             OpCode::Mul => {
+                pointer += bytecode.delta as isize;
                 memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
             }
             OpCode::MulLast => {
+                pointer += bytecode.delta as isize;
                 memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
                 pointer += bytecode.addr as i32 as isize;
             }
 
             OpCode::MoveAdd => {
+                pointer += bytecode.delta as isize;
                 let v = memory.get(pointer)?;
                 if v != 0 {
                     memory.set(pointer, 0)?;
@@ -113,6 +126,7 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                 }
             }
             OpCode::MoveSub => {
+                pointer += bytecode.delta as isize;
                 let v = memory.get(pointer)?;
                 if v != 0 {
                     memory.set(pointer, 0)?;
@@ -121,22 +135,26 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
             }
 
             OpCode::In => {
+                pointer += bytecode.delta as isize;
                 match stdin.read_exact(&mut stdin_buf) {
                     Ok(_) => memory.set(pointer, stdin_buf[0])?,
                     Err(_) => memory.set(pointer, 0)?,
                 }
             }
             OpCode::Out => {
+                pointer += bytecode.delta as isize;
                 stdout.write(&[memory.get(pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
             }
 
             OpCode::JmpIfZero => {
+                pointer += bytecode.delta as isize;
                 if memory.get(pointer)? == 0 {
                     pc = bytecode.addr as usize;
                     continue;
                 }
             }
             OpCode::JmpIfNotZero => {
+                pointer += bytecode.delta as isize;
                 if memory.get(pointer)? != 0 {
                     pc = bytecode.addr as usize;
                     continue;
