@@ -28,7 +28,6 @@ pub enum OpCode {
 
     MulStart,
     Mul,
-    MulLast,
 
     MoveAdd,
     MoveSub,
@@ -61,7 +60,6 @@ impl Debug for Bytecode {
 
             OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
             OpCode::Mul => format!("mul {}", self.val),
-            OpCode::MulLast => format!("mul {}, {}", self.val, self.addr as i32),
 
             OpCode::MoveAdd => format!("mvadd {}", self.addr as i32),
             OpCode::MoveSub => format!("mvsub {}", self.addr as i32),
@@ -225,25 +223,14 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                             addr: skip_pc,
                         });
 
-                        let ((l_ptr, l_val), rest) = dests.split_last().unwrap(); // SAFETY: dests要素は1つ以上存在するはず
-
-                        for (dest_ptr, dest_val) in rest {
-                            let delta = i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
-                            last_ptr = *dest_ptr;
+                        for (dest_ptr, dest_val) in dests {
                             bytecodes.push(Bytecode {
                                 opcode: OpCode::Mul,
-                                delta,
+                                delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
                                 val: *dest_val,
                                 addr: 0,
                             });
                         }
-
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::MulLast,
-                            delta: i16::try_from(l_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                            val: *l_val,
-                            addr: (node.pointer - l_ptr) as i32 as u32,
-                        });
 
                         last_ptr = node.pointer;
                     }

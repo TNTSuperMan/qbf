@@ -108,13 +108,7 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                 }
             }
             OpCode::Mul => {
-                pointer += bytecode.delta as isize;
-                memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
-            }
-            OpCode::MulLast => {
-                pointer += bytecode.delta as isize;
-                memory.add(pointer, mul_val.wrapping_mul(bytecode.val))?;
-                pointer += bytecode.addr as i32 as isize;
+                memory.add(pointer + bytecode.delta as isize, mul_val.wrapping_mul(bytecode.val))?;
             }
 
             OpCode::MoveAdd => {
