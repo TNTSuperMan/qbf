@@ -112,6 +112,13 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                     memory.add(pointer + (bytecode.addr as i32 as isize), v)?;
                 }
             }
+            OpCode::MoveSub => {
+                let v = memory.get(pointer)?;
+                if v != 0 {
+                    memory.set(pointer, 0)?;
+                    memory.sub(pointer + (bytecode.addr as i32 as isize), v)?;
+                }
+            }
 
             OpCode::In => {
                 match stdin.read_exact(&mut stdin_buf) {

@@ -36,6 +36,17 @@ impl Memory {
             Ok(())
         }
     }
+    pub fn sub(&mut self, index: isize, value: u8) -> Result<(), String> {
+        if self.0.len() <= index as usize {
+            Err(format!("Runtime Error: Out of range memory read, Address: {}", index))
+        } else {
+            unsafe { // SAFETY: 直前に範囲を確認済み
+                let ptr = self.0.as_mut_ptr().add(index as usize);
+                *ptr = (*ptr).wrapping_sub(value);
+            }
+            Ok(())
+        }
+    }
     #[inline(always)]
     pub unsafe fn get_unchecked(&self, index: usize) -> u8 {
         *self.0.as_ptr().add(index)
@@ -48,5 +59,10 @@ impl Memory {
     pub unsafe fn add_unchecked(&mut self, index: usize, value: u8) {
         let ptr = self.0.as_mut_ptr().add(index);
         *ptr = (*ptr).wrapping_add(value);
+    }
+    #[inline(always)]
+    pub unsafe fn sub_unchecked(&mut self, index: usize, value: u8) {
+        let ptr = self.0.as_mut_ptr().add(index);
+        *ptr = (*ptr).wrapping_sub(value);
     }
 }

@@ -14,6 +14,7 @@ pub enum IROp {
     Shift(isize),
     MulAndSetZero(Box<[(isize, u8)]>),
     MoveAdd(isize),
+    MoveSub(isize),
 
     In,
     Out,
@@ -130,6 +131,10 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                                 if dests.len() == 1 {
                                     if dests[0].1 == 1 {
                                         push_inst!(IROp::MoveAdd(dests[0].0));
+                                        continue;
+                                    }
+                                    if dests[0].1 == 255 {
+                                        push_inst!(IROp::MoveSub(dests[0].0));
                                         continue;
                                     }
                                 }

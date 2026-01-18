@@ -31,6 +31,7 @@ pub enum OpCode {
     MulLast,
 
     MoveAdd,
+    MoveSub,
 
     In,
     Out,
@@ -63,6 +64,7 @@ impl Debug for Bytecode {
             OpCode::MulLast => format!("mul {}, {}", self.val, self.addr as i32),
 
             OpCode::MoveAdd => format!("mvadd {}", self.addr as i32),
+            OpCode::MoveSub => format!("mvsub {}", self.addr as i32),
 
             OpCode::In => format!("in"),
             OpCode::Out => format!("out"),
@@ -248,6 +250,14 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                     IROp::MoveAdd(dest) => {
                         bytecodes.push(Bytecode {
                             opcode: OpCode::MoveAdd,
+                            delta,
+                            val: 0,
+                            addr: i32::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")? as u32,
+                        });
+                    }
+                    IROp::MoveSub(dest) => {
+                        bytecodes.push(Bytecode {
+                            opcode: OpCode::MoveSub,
                             delta,
                             val: 0,
                             addr: i32::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")? as u32,
