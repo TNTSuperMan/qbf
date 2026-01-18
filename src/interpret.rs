@@ -10,6 +10,14 @@ pub fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
     )
 }
 
+#[inline(always)]
+pub fn u32_to_two_delta(val: u32) -> (i16, i16) {
+    (
+        (val & 0xFFFF) as u16 as i16,
+        (val >> 16) as u16 as i16,
+    )
+}
+
 pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap) -> Result<(), String> {
     let mut stdout = stdout().lock();
     let mut stdin = stdin().lock();
@@ -125,6 +133,47 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                 if v != 0 {
                     memory.set(pointer, 0)?;
                     memory.sub(pointer + (bytecode.addr as i32 as isize), v)?;
+                }
+            }
+
+            OpCode::DoubleMoveAddAdd => {
+                pointer += bytecode.delta as isize;
+                let v = memory.get(pointer)?;
+                if v != 0 {
+                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                    memory.add(pointer + d1 as isize, v)?;
+                    memory.add(pointer + d2 as isize, v)?;
+                    memory.set(pointer, 0)?;
+                }
+            }
+            OpCode::DoubleMoveAddSub => {
+                pointer += bytecode.delta as isize;
+                let v = memory.get(pointer)?;
+                if v != 0 {
+                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                    memory.add(pointer + d1 as isize, v)?;
+                    memory.sub(pointer + d2 as isize, v)?;
+                    memory.set(pointer, 0)?;
+                }
+            }
+            OpCode::DoubleMoveSubAdd => {
+                pointer += bytecode.delta as isize;
+                let v = memory.get(pointer)?;
+                if v != 0 {
+                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                    memory.sub(pointer + d1 as isize, v)?;
+                    memory.add(pointer + d2 as isize, v)?;
+                    memory.set(pointer, 0)?;
+                }
+            }
+            OpCode::DoubleMoveSubSub => {
+                pointer += bytecode.delta as isize;
+                let v = memory.get(pointer)?;
+                if v != 0 {
+                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                    memory.sub(pointer + d1 as isize, v)?;
+                    memory.sub(pointer + d2 as isize, v)?;
+                    memory.set(pointer, 0)?;
                 }
             }
 

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{interpret::u32_to_delta_and_val, ir::{IR, IROp}};
+use crate::{interpret::{u32_to_delta_and_val, u32_to_two_delta}, ir::{IR, IROp}};
 
 #[derive(Clone)]
 pub struct Bytecode {
@@ -32,6 +32,11 @@ pub enum OpCode {
     SingleMoveAdd,
     SingleMoveSub,
 
+    DoubleMoveAddAdd,
+    DoubleMoveAddSub,
+    DoubleMoveSubAdd,
+    DoubleMoveSubSub,
+
     MoveStart,
     MoveAdd,
     MoveSub,
@@ -48,6 +53,7 @@ pub enum OpCode {
 impl Debug for Bytecode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (delta2, val2) = u32_to_delta_and_val(self.addr);
+        let (d1, d2) = u32_to_two_delta(self.addr);
         let op = match self.opcode {
             OpCode::Breakpoint => format!("brk"),
 
@@ -67,6 +73,11 @@ impl Debug for Bytecode {
 
             OpCode::SingleMoveAdd => format!("smadd {}", self.addr as i32),
             OpCode::SingleMoveSub => format!("smsub {}", self.addr as i32),
+            
+            OpCode::DoubleMoveAddAdd => format!("dmaa {} {}", d1, d2),
+            OpCode::DoubleMoveAddSub => format!("dmas {} {}", d1, d2),
+            OpCode::DoubleMoveSubAdd => format!("dmsa {} {}", d1, d2),
+            OpCode::DoubleMoveSubSub => format!("dmss {} {}", d1, d2),
 
             OpCode::MoveStart => format!("mvstart or jmp {}", self.addr as i32),
             OpCode::MoveAdd => format!("madd"),
@@ -241,30 +252,49 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                         }
                     }
                     IROp::MovesAndSetZero(dests) => {
-                        let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
+                        if let [(p1, f1), (p2, f2)] = dests.iter().as_slice() {
+                            let delta1 = i16::try_from(p1.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
+                            let delta2 = i16::try_from(p2.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
 
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::MoveStart,
-                            delta,
-                            val: 0,
-                            addr: skip_pc,
-                        });
+                            let opcode = match (*f1, *f2) {
+                                (true, true) =>   OpCode::DoubleMoveAddAdd,
+                                (true, false) =>  OpCode::DoubleMoveAddSub,
+                                (false, true) =>  OpCode::DoubleMoveSubAdd,
+                                (false, false) => OpCode::DoubleMoveSubSub,
+                            };
 
-                        for (dest_ptr, is_pos) in dests {
-                            if *is_pos {
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::MoveAdd,
-                                    delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                                    val: 0,
-                                    addr: 0,
-                                });
-                            } else {
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::MoveSub,
-                                    delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                                    val: 0,
-                                    addr: 0,
-                                });
+                            bytecodes.push(Bytecode {
+                                opcode,
+                                delta,
+                                val: 0,
+                                addr: (delta1 as u16 as u32) | ((delta2 as u16 as u32) << 16),
+                            });
+                        } else {
+                            let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
+
+                            bytecodes.push(Bytecode {
+                                opcode: OpCode::MoveStart,
+                                delta,
+                                val: 0,
+                                addr: skip_pc,
+                            });
+
+                            for (dest_ptr, is_pos) in dests {
+                                if *is_pos {
+                                    bytecodes.push(Bytecode {
+                                        opcode: OpCode::MoveAdd,
+                                        delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
+                                        val: 0,
+                                        addr: 0,
+                                    });
+                                } else {
+                                    bytecodes.push(Bytecode {
+                                        opcode: OpCode::MoveSub,
+                                        delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
+                                        val: 0,
+                                        addr: 0,
+                                    });
+                                }
                             }
                         }
                     }
