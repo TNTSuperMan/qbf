@@ -1,6 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::{bytecode::{Bytecode, OpCode}, memory::Memory, trace::OperationCountMap};
+use crate::{cisc::bytecode::{Bytecode, OpCode}, memory::Memory, trace::OperationCountMap};
 
 #[inline(always)]
 pub fn u32_to_delta_and_val(val: u32) -> (i16, u8) {

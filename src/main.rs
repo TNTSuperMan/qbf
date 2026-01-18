@@ -1,12 +1,11 @@
 use std::time::Instant;
 
-use crate::{bytecode::ir_to_bytecodes, interpret::run, ir::parse_to_ir, memory::Memory, trace::OperationCountMap};
+use crate::{ir::parse_to_ir, cisc::run_cisc};
 use clap::Parser;
 
 mod memory;
 mod ir;
-mod bytecode;
-mod interpret;
+mod cisc;
 mod trace;
 mod ssa;
 
@@ -30,16 +29,7 @@ fn main() {
         Ok(code) => {
             if let Some(count) = args.benchmark_count {
                 match parse_to_ir(&code) {
-                    Ok(ir) => {
-                        match ir_to_bytecodes(&ir) {
-                            Ok(_b) => {},
-                            Err(msg) => {
-                                eprintln!("{}", msg);
-                                eprintln!("Run without --benchmark-count for more details");
-                                return;
-                            }
-                        };
-                    },
+                    Ok(_ir) => {},
                     Err(msg) => {
                         eprintln!("{}", msg);
                         eprintln!("Run without --benchmark-count for more details");
@@ -52,13 +42,8 @@ fn main() {
                     let start = Instant::now();
 
                     let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
-                    let bytecodes = ir_to_bytecodes(&ir).unwrap();
-
-                    let mut memory = Memory::new();
-                    let mut ocm = OperationCountMap::new(bytecodes.len());
                     
-                    let result = run(&bytecodes, &mut memory, &mut ocm);
-                    if let Err(err) = result.clone() {
+                    if let Err(err) = run_cisc(&ir) {
                         eprintln!("{}", err);
                         return;
                     }
@@ -79,27 +64,14 @@ fn main() {
                     }
                 };
 
-                let bytecodes = match ir_to_bytecodes(&ir) {
-                    Ok(b) => b,
-                    Err(msg) => {
-                        eprintln!("{}", msg);
-                        return;
-                    }
-                };
-
-                let mut memory = Memory::new();
-                let mut ocm = OperationCountMap::new(bytecodes.len());
-
-                if let Err(msg) = run(&bytecodes, &mut memory, &mut ocm) {
+                if let Err(msg) = run_cisc(&ir) {
                     eprintln!("{}", msg);
                 }
 
                 #[cfg(feature = "debug")] {
-                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::{generate_bytecode_trace, generate_ir_trace}};
+                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::generate_ir_trace};
                     use std::fs;
-                    fs::write("./box/bytecodes", generate_bytecode_trace(&bytecodes, &ocm)).expect("failed to write");
                     fs::write("./box/ir", generate_ir_trace(&ir)).expect("failed to write");
-                    fs::write("./box/memory", *memory.0).expect("failed to write");
                     let noend_ir = &ir[0..ir.len()-1];
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
                     let one_round = inline_ssa_history(&raw);
