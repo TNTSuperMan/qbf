@@ -1,11 +1,12 @@
 use std::time::Instant;
 
-use crate::{ir::parse_to_ir, cisc::run_cisc};
+use crate::{cisc::run_cisc, ir::parse_to_ir, risc::run_risc};
 use clap::Parser;
 
 mod memory;
 mod ir;
 mod cisc;
+mod risc;
 mod trace;
 mod ssa;
 
@@ -17,6 +18,9 @@ struct Args {
     
     #[arg(short, long)]
     benchmark_count: Option<usize>,
+
+    #[arg(short, long)]
+    use_risc: bool,
 }
 
 fn main() {
@@ -37,20 +41,34 @@ fn main() {
                     }
                 };
                 let mut times: Vec<f64> = vec![];
-                
-                for _ in 0..count {
-                    let start = Instant::now();
 
-                    let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
-                    
-                    if let Err(err) = run_cisc(&ir) {
-                        eprintln!("{}", err);
-                        return;
+                if args.use_risc {
+                    for _ in 0..count {
+                        let start = Instant::now();
+
+                        let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
+                        
+                        if let Err(err) = run_risc(&ir) {
+                            eprintln!("{}", err);
+                            return;
+                        }
+
+                        times.push(start.elapsed().as_secs_f64());
                     }
+                } else {
+                    for _ in 0..count {
+                        let start = Instant::now();
 
-                    times.push(start.elapsed().as_secs_f64());
+                        let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
+                        
+                        if let Err(err) = run_cisc(&ir) {
+                            eprintln!("{}", err);
+                            return;
+                        }
+
+                        times.push(start.elapsed().as_secs_f64());
+                    }
                 }
-
 
                 let mean = times.iter().sum::<f64>() / times.len() as f64;
                 println!("Mean time(sec): {}", mean);
@@ -64,8 +82,14 @@ fn main() {
                     }
                 };
 
-                if let Err(msg) = run_cisc(&ir) {
-                    eprintln!("{}", msg);
+                if args.use_risc {
+                    if let Err(msg) = run_risc(&ir) {
+                        eprintln!("{}", msg);
+                    }
+                } else {
+                    if let Err(msg) = run_cisc(&ir) {
+                        eprintln!("{}", msg);
+                    }
                 }
 
                 #[cfg(feature = "debug")] {
