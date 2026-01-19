@@ -8,7 +8,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
     let bytecodes = ir_to_bytecodes(ir_nodes, range_info)?;
     let mut memory = Memory::new();
     let mut ocm = OperationCountMap::new(bytecodes.len());
-    run(&bytecodes, &mut memory, &mut ocm)?;
+    let result = run(&bytecodes, &mut memory, &mut ocm);
     
     #[cfg(feature = "debug")] {
         use std::fs;
@@ -18,5 +18,5 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
         fs::write("./box/memory", *memory.0).expect("failed to write");
     }
 
-    Ok(())
+    result
 }
