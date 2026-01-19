@@ -92,14 +92,6 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
         internal_ri.subscribe(*pointer);
         match opcode {
-            IROp::LoopStart(end) => {
-                if let IROp::LoopEndWithOffset(_, _) = ir_nodes[*end].opcode {
-                    internal_ri.apply_loop(*end);
-                }
-            }
-            IROp::LoopEndWithOffset(_start, offset) => {
-                internal_ri.insert(i, Sign::isize_to_sign(*offset), *pointer);
-            }
             IROp::Shift(step) => {
                 internal_ri.insert(i, Sign::isize_to_sign(*step), *pointer);
             }
@@ -112,6 +104,20 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
                 for (ptr, _val) in dests {
                     internal_ri.subscribe(*ptr);
                 }
+            }
+            IROp::MoveAdd(dest) => {
+                internal_ri.subscribe(*dest);
+            }
+            IROp::MoveSub(dest) => {
+                internal_ri.subscribe(*dest);
+            }
+            IROp::LoopStart(end) => {
+                if let IROp::LoopEndWithOffset(_, _) = ir_nodes[*end].opcode {
+                    internal_ri.apply_loop(*end);
+                }
+            }
+            IROp::LoopEndWithOffset(_start, offset) => {
+                internal_ri.insert(i, Sign::isize_to_sign(*offset), *pointer);
             }
             _ => {}
         }
