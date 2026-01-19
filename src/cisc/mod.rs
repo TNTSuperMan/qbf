@@ -1,11 +1,11 @@
-use crate::{cisc::{bytecode::ir_to_bytecodes, interpret::run}, ir::IR, memory::Memory, trace::OperationCountMap};
+use crate::{cisc::{bytecode::ir_to_bytecodes, interpret::run}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
 
 mod bytecode;
 mod interpret;
 mod trace;
 
-pub fn run_cisc(ir_nodes: &[IR]) -> Result<(), String> {
-    let bytecodes = ir_to_bytecodes(ir_nodes)?;
+pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
+    let bytecodes = ir_to_bytecodes(ir_nodes, range_info)?;
     let mut memory = Memory::new();
     let mut ocm = OperationCountMap::new(bytecodes.len());
     run(&bytecodes, &mut memory, &mut ocm)?;

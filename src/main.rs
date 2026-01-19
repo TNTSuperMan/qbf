@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::{cisc::run_cisc, ir::parse_to_ir, risc::run_risc};
+use crate::{cisc::run_cisc, ir::parse_to_ir, range::calculate_range_data, risc::run_risc};
 use clap::Parser;
 
 mod memory;
@@ -61,8 +61,9 @@ fn main() {
                         let start = Instant::now();
 
                         let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
+                        let range_info = calculate_range_data(&ir);
                         
-                        if let Err(err) = run_cisc(&ir) {
+                        if let Err(err) = run_cisc(&ir, &range_info) {
                             eprintln!("{}", err);
                             return;
                         }
@@ -82,19 +83,20 @@ fn main() {
                         return;
                     }
                 };
+                let range_info = calculate_range_data(&ir);
 
                 if args.use_risc {
                     if let Err(msg) = run_risc(&ir) {
                         eprintln!("{}", msg);
                     }
                 } else {
-                    if let Err(msg) = run_cisc(&ir) {
+                    if let Err(msg) = run_cisc(&ir, &range_info) {
                         eprintln!("{}", msg);
                     }
                 }
 
                 #[cfg(feature = "debug")] {
-                    use crate::{range::calculate_range_data, ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::generate_ir_trace};
+                    use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::generate_ir_trace};
                     use std::fs;
                     let range = calculate_range_data(&ir);
                     fs::write("./box/ir", generate_ir_trace(&ir, &range)).expect("failed to write");

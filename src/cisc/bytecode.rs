@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{cisc::interpret::{u32_to_delta_and_val, u32_to_two_delta}, ir::{IR, IROp}};
+use crate::{cisc::interpret::{u32_to_delta_and_val, u32_to_two_delta}, ir::{IR, IROp}, range::RangeInfo};
 
 #[derive(Clone)]
 pub struct Bytecode {
@@ -96,7 +96,7 @@ impl Debug for Bytecode {
     }
 }
 
-pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
+pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Bytecode>, String> {
     let mut bytecodes: Vec<Bytecode> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
 
