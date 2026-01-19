@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{cisc::interpret::{u32_to_delta_and_val, u32_to_two_delta}, ir::{IR, IROp}, range::RangeInfo};
+use crate::{cisc::interpret::{u32_to_delta_and_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
 
 #[derive(Clone)]
 pub struct Bytecode {
@@ -46,6 +46,8 @@ pub enum OpCode {
 
     JmpIfZero, // LoopStart
     JmpIfNotZero, // LoopEnd
+    PositiveRangeCheckJNZ, // LoopEndWithOffset
+    NegativeRangeCheckJNZ,
 
     End,
 }
@@ -88,6 +90,8 @@ impl Debug for Bytecode {
 
             OpCode::JmpIfZero => format!("jpz {}", self.addr),
             OpCode::JmpIfNotZero => format!("jpnz {}", self.addr),
+            OpCode::PositiveRangeCheckJNZ => format!("prc {}, jpnz {}", self.val as i8, self.addr),
+            OpCode::NegativeRangeCheckJNZ => format!("nrc {}, jpnz {}", self.val as i8, self.addr),
 
             OpCode::End => format!("end"),
         };
@@ -353,16 +357,24 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
-                        let start = loop_stack.pop().unwrap();
-                        let end = bytecodes.len();
-                        last_ptr -= offset;
-                        bytecodes[start].addr = (end + 1) as u32;
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::JmpIfNotZero,
-                            delta,
-                            val: 0,
-                            addr: (start + 1) as u32,
-                        });
+                        let (range_sign, range) = range_info.map.get(&i).unwrap();
+                        if let Ok(range_i8) = i8::try_from(*range) {
+                            let start = loop_stack.pop().unwrap();
+                            let end = bytecodes.len();
+                            last_ptr -= offset;
+                            bytecodes[start].addr = (end + 1) as u32;
+                            bytecodes.push(Bytecode {
+                                opcode: match range_sign {
+                                    Sign::Positive => OpCode::PositiveRangeCheckJNZ,
+                                    Sign::Negative => OpCode::NegativeRangeCheckJNZ,
+                                },
+                                delta,
+                                val: range_i8 as u8,
+                                addr: (start + 1) as u32,
+                            });
+                        } else {
+                            return Err("OptimizationError: Pointer Range Overflow".to_owned())
+                        }
                     }
 
                     IROp::End => {

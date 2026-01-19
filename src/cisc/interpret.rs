@@ -221,6 +221,26 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
                     continue;
                 }
             }
+            OpCode::PositiveRangeCheckJNZ => {
+                pointer += bytecode.delta as isize;
+                if (bytecode.val as i8 as isize) >= pointer {
+                    println!("deopt");
+                }
+                if memory.get(pointer)? != 0 {
+                    pc = bytecode.addr as usize;
+                    continue;
+                }
+            }
+            OpCode::NegativeRangeCheckJNZ => {
+                pointer += bytecode.delta as isize;
+                if (bytecode.val as i8 as isize) < pointer {
+                    println!("deopt");
+                }
+                if memory.get(pointer)? != 0 {
+                    pc = bytecode.addr as usize;
+                    continue;
+                }
+            }
 
             OpCode::End => {
                 return Ok(());
