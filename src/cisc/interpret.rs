@@ -204,7 +204,7 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
             }
             OpCode::Out => {
                 pointer += bytecode.delta as isize;
-                stdout.write(&[memory.get(pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
+                //stdout.write(&[memory.get(pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
             }
 
             OpCode::JmpIfZero => {
@@ -223,8 +223,8 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
             }
             OpCode::PositiveRangeCheckJNZ => {
                 pointer += bytecode.delta as isize;
-                if (bytecode.val as i8 as isize) >= pointer {
-                    println!("deopt");
+                if (bytecode.val as i8 as i16 as u16 as isize) <= pointer {
+                    println!("deoptP {} {}", bytecode.val as i8 as i16 as u16 as isize, pointer);
                 }
                 if memory.get(pointer)? != 0 {
                     pc = bytecode.addr as usize;
@@ -233,8 +233,8 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
             }
             OpCode::NegativeRangeCheckJNZ => {
                 pointer += bytecode.delta as isize;
-                if (bytecode.val as i8 as isize) < pointer {
-                    println!("deopt");
+                if (bytecode.val as i8 as i16 as u16 as isize) > pointer {
+                    println!("deoptN {} {}", bytecode.val as i8 as i16 as u16 as isize, pointer);
                 }
                 if memory.get(pointer)? != 0 {
                     pc = bytecode.addr as usize;

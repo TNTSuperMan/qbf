@@ -43,7 +43,7 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
             use crate::range::Sign;
 
             str += &format!("{}{} {:?} ({})\n", "    ".repeat(lv), ir.pointer, ir.opcode, match ri.0 {
-                Sign::Positive => format!("ptr < {}", ri.1),
+                Sign::Positive => format!("ptr <= {}", ri.1),
                 Sign::Negative => format!("ptr >= {}", ri.1),
             });
         } else {

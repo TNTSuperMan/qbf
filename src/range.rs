@@ -71,7 +71,10 @@ impl RangeInfo {
     fn from(internal_ri: &InternalRangeInfo) -> Result<RangeInfo, String> {
         let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, r))| {
             if let Ok(ri16) = i16::try_from(ptr - r) {
-                Ok((ir_at, (sign, ri16 as u16)))
+                match sign {
+                    Sign::Positive => Ok((ir_at, (sign, ri16.wrapping_sub(1) as u16))),
+                    Sign::Negative => Ok((ir_at, (sign, ri16 as u16))),
+                }
             } else {
                 Err("OptimizationError: Pointer Range Overflow".to_owned())
             }
