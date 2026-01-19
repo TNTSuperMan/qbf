@@ -84,6 +84,7 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> RangeInfo {
     let mut internal_ri = InternalRangeInfo::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
+        internal_ri.subscribe(*pointer);
         match opcode {
             IROp::LoopStart(end) => {
                 if let IROp::LoopEndWithOffset(_, _) = ir_nodes[*end].opcode {
@@ -108,7 +109,6 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> RangeInfo {
             }
             _ => {}
         }
-        internal_ri.subscribe(*pointer);
     }
 
     RangeInfo::from(&internal_ri)
