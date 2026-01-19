@@ -64,23 +64,26 @@ impl InternalRangeInfo {
 }
 
 pub struct RangeInfo {
-    pub map: HashMap<usize, (Sign, isize)>,
+    pub map: HashMap<usize, (Sign, u16)>,
     pub do_opt_first: bool,
 }
 impl RangeInfo {
-    fn from(internal_ri: &InternalRangeInfo) -> RangeInfo {
-        RangeInfo {
-            map: HashMap::from_iter(
-                internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, r))| (
-                    ir_at, (sign, ptr - r)
-                ))
-            ),
+    fn from(internal_ri: &InternalRangeInfo) -> Result<RangeInfo, String> {
+        let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, r))| {
+            if let Ok(ri16) = i16::try_from(ptr - r) {
+                Ok((ir_at, (sign, ri16 as u16)))
+            } else {
+                Err("OptimizationError: Pointer Range Overflow".to_owned())
+            }
+        }).collect();
+        Ok(RangeInfo {
+            map: HashMap::from_iter(map_arr?),
             do_opt_first: !(internal_ri.curr_negative < 0) && !(internal_ri.curr_positive >= 65536),
-        }
+        })
     }
 }
 
-pub fn generate_range_info(ir_nodes: &[IR]) -> RangeInfo {
+pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
     let mut internal_ri = InternalRangeInfo::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
@@ -111,5 +114,5 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> RangeInfo {
         }
     }
 
-    RangeInfo::from(&internal_ri)
+    Ok(RangeInfo::from(&internal_ri)?)
 }
