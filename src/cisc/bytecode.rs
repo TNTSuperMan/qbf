@@ -358,7 +358,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
                         let (range_sign, range) = range_info.map.get(&i).unwrap();
-                        if let Ok(range_i8) = i8::try_from(*range) {
+                        if let Ok(range_i8) = i8::try_from(*range as i16) {
                             let start = loop_stack.pop().unwrap();
                             let end = bytecodes.len();
                             last_ptr -= offset;
