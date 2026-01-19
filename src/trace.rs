@@ -17,15 +17,18 @@ impl OperationCountMap {
 }
 
 #[cfg(feature = "debug")]
-use std::collections::HashMap;
-
-#[cfg(feature = "debug")]
 use crate::{ir::IR, range::RangeInfo};
 
 #[cfg(feature = "debug")]
-pub fn generate_ir_trace(ir_nodes: &[IR], range: &HashMap<usize, RangeInfo>) -> String {
+pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
     let mut str = String::new();
     let mut lv: usize = 0;
+
+    if range.do_opt_first {
+        str += "opt\n";
+    } else {
+        str += "deopt\n";
+    }
 
     for (i, ir) in ir_nodes.iter().enumerate() {
         use crate::ir::IROp;
@@ -36,12 +39,12 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &HashMap<usize, RangeInfo>) -> 
         if let IROp::LoopEndWithOffset(_, _) = ir.opcode {
             lv -= 1;
         }
-        if let Some(ri) = range.get(&i) {
-            use crate::range::RangeInfoKind;
+        if let Some(ri) = range.map.get(&i) {
+            use crate::range::Sign;
 
-            str += &format!("{}{} {:?} ({})\n", "    ".repeat(lv), ir.pointer, ir.opcode, match ri.kind {
-                RangeInfoKind::Positive => format!("ptr < {}", (ri.pointer - ri.val) as i16 as u16),
-                RangeInfoKind::Negative => format!("ptr >= {}", (ri.pointer - ri.val) as i16 as u16),
+            str += &format!("{}{} {:?} ({})\n", "    ".repeat(lv), ir.pointer, ir.opcode, match ri.0 {
+                Sign::Positive => format!("ptr < {}", ri.1),
+                Sign::Negative => format!("ptr >= {}", ri.1),
             });
         } else {
             str += &format!("{}{} {:?}\n", "    ".repeat(lv), ir.pointer, ir.opcode);

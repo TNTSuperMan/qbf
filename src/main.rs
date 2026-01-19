@@ -97,8 +97,7 @@ fn main() {
                     use crate::{range::calculate_range_data, ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::generate_ir_trace};
                     use std::fs;
                     let range = calculate_range_data(&ir);
-                    fs::write("./box/ranges", format!("{:?}", range.1)).expect("failed to write");
-                    fs::write("./box/ir", generate_ir_trace(&ir, &range.0)).expect("failed to write");
+                    fs::write("./box/ir", generate_ir_trace(&ir, &range)).expect("failed to write");
                     let noend_ir = &ir[0..ir.len()-1];
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
                     let one_round = inline_ssa_history(&raw);
