@@ -80,7 +80,7 @@ impl RangeInfo {
     }
 }
 
-pub fn calculate_range_data(ir_nodes: &[IR]) -> RangeInfo {
+pub fn generate_range_info(ir_nodes: &[IR]) -> RangeInfo {
     let mut internal_ri = InternalRangeInfo::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {

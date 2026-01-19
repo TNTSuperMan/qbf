@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::{cisc::run_cisc, ir::parse_to_ir, range::calculate_range_data, risc::run_risc};
+use crate::{cisc::run_cisc, ir::parse_to_ir, range::generate_range_info, risc::run_risc};
 use clap::Parser;
 
 mod memory;
@@ -61,7 +61,7 @@ fn main() {
                         let start = Instant::now();
 
                         let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
-                        let range_info = calculate_range_data(&ir);
+                        let range_info = generate_range_info(&ir);
                         
                         if let Err(err) = run_cisc(&ir, &range_info) {
                             eprintln!("{}", err);
@@ -83,7 +83,7 @@ fn main() {
                         return;
                     }
                 };
-                let range_info = calculate_range_data(&ir);
+                let range_info = generate_range_info(&ir);
 
                 if args.use_risc {
                     if let Err(msg) = run_risc(&ir) {
@@ -98,7 +98,7 @@ fn main() {
                 #[cfg(feature = "debug")] {
                     use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::generate_ir_trace};
                     use std::fs;
-                    let range = calculate_range_data(&ir);
+                    let range = generate_range_info(&ir);
                     fs::write("./box/ir", generate_ir_trace(&ir, &range)).expect("failed to write");
                     let noend_ir = &ir[0..ir.len()-1];
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
