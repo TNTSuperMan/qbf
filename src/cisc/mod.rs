@@ -30,6 +30,9 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
             }
             Err(msg) => {
                 write_trace(&vm);
+                #[cfg(feature = "debug")] {
+                    println!("PC: {}({:?}), ptr: {}", vm.pc, vm.insts[vm.pc], vm.pointer);
+                }
                 return Err(msg);
             }
         }
