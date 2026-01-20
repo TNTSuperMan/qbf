@@ -65,6 +65,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.step_ptr(step);
                 }
                 if !positive_out_of_range(bytecode.val, vm.pointer) {
+                    vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
@@ -75,6 +76,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.step_ptr(step);
                 }
                 if !negative_out_of_range(bytecode.val, vm.pointer) {
+                    vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
@@ -88,6 +90,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 if !positive_out_of_range(val2, vm.pointer) {
                     vm.step_ptr(delta as isize);
                     vm.memory.add(vm.pointer, val)?;
+                    vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.step_ptr(delta as isize);
@@ -103,6 +106,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 if !negative_out_of_range(val2, vm.pointer) {
                     vm.step_ptr(delta as isize);
                     vm.memory.add(vm.pointer, val)?;
+                    vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.step_ptr(delta as isize);
@@ -118,6 +122,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 if !positive_out_of_range(val2, vm.pointer) {
                     vm.step_ptr(delta as isize);
                     vm.memory.set(vm.pointer, val)?;
+                    vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.step_ptr(delta as isize);
@@ -133,6 +138,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 if !negative_out_of_range(val2, vm.pointer) {
                     vm.step_ptr(delta as isize);
                     vm.memory.set(vm.pointer, val)?;
+                    vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.step_ptr(delta as isize);
