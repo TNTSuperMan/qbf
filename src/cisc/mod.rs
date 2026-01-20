@@ -22,6 +22,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
         };
         match result {
             Ok(InterpreterResult::End) => {
+                write_trace(&vm);
                 return Ok(());
             }
             Ok(InterpreterResult::ToggleTier(t)) => {
