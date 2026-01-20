@@ -162,60 +162,46 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
 
             OpCode::SingleMoveAdd => {
                 vm.step_ptr(bytecode.delta as isize);
-                let v = vm.memory.get_unchecked(vm.pointer);
-                if v != 0 {
-                    vm.memory.set_unchecked(vm.pointer, 0);
-                    vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(bytecode.addr as i32 as isize), v);
-                }
+                vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(bytecode.addr as i32 as isize), vm.memory.get_unchecked(vm.pointer));
+                vm.memory.set_unchecked(vm.pointer, 0);
             }
             OpCode::SingleMoveSub => {
                 vm.step_ptr(bytecode.delta as isize);
-                let v = vm.memory.get_unchecked(vm.pointer);
-                if v != 0 {
-                    vm.memory.set_unchecked(vm.pointer, 0);
-                    vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(bytecode.addr as i32 as isize), v);
-                }
+                vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(bytecode.addr as i32 as isize), vm.memory.get_unchecked(vm.pointer));
+                vm.memory.set_unchecked(vm.pointer, 0);
             }
 
             OpCode::DoubleMoveAddAdd => {
                 vm.step_ptr(bytecode.delta as isize);
                 let v = vm.memory.get_unchecked(vm.pointer);
-                if v != 0 {
-                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
-                    vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
-                    vm.memory.set_unchecked(vm.pointer, 0);
-                }
+                let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
+                vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
+                vm.memory.set_unchecked(vm.pointer, 0);
             }
             OpCode::DoubleMoveAddSub => {
                 vm.step_ptr(bytecode.delta as isize);
                 let v = vm.memory.get_unchecked(vm.pointer);
-                if v != 0 {
-                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
-                    vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
-                    vm.memory.set_unchecked(vm.pointer, 0);
-                }
+                let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
+                vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
+                vm.memory.set_unchecked(vm.pointer, 0);
             }
             OpCode::DoubleMoveSubAdd => {
                 vm.step_ptr(bytecode.delta as isize);
                 let v = vm.memory.get_unchecked(vm.pointer);
-                if v != 0 {
-                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
-                    vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
-                    vm.memory.set_unchecked(vm.pointer, 0);
-                }
+                let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
+                vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
+                vm.memory.set_unchecked(vm.pointer, 0);
             }
             OpCode::DoubleMoveSubSub => {
                 vm.step_ptr(bytecode.delta as isize);
                 let v = vm.memory.get_unchecked(vm.pointer);
-                if v != 0 {
-                    let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
-                    vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
-                    vm.memory.set_unchecked(vm.pointer, 0);
-                }
+                let (d1, d2) = u32_to_two_delta(bytecode.addr);
+                vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d1 as isize), v);
+                vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(d2 as isize), v);
+                vm.memory.set_unchecked(vm.pointer, 0);
             }
 
             OpCode::MoveStart => {
