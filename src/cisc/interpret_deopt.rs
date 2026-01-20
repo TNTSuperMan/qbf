@@ -258,22 +258,32 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
             OpCode::PositiveRangeCheckJNZ => {
                 vm.step_ptr(bytecode.delta as isize);
+                if !positive_out_of_range(bytecode.val, vm.pointer) {
+                    if vm.memory.get(vm.pointer)? != 0 {
+                        vm.pc = bytecode.addr as usize;
+                    } else {
+                        vm.pc += 1;
+                    }
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
-                }
-                if !positive_out_of_range(bytecode.val, vm.pointer) {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             OpCode::NegativeRangeCheckJNZ => {
                 vm.step_ptr(bytecode.delta as isize);
+                if !negative_out_of_range(bytecode.val, vm.pointer) {
+                    if vm.memory.get(vm.pointer)? != 0 {
+                        vm.pc = bytecode.addr as usize;
+                    } else {
+                        vm.pc += 1;
+                    }
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
-                }
-                if !negative_out_of_range(bytecode.val, vm.pointer) {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
 

@@ -25,6 +25,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
                 return Ok(());
             }
             Ok(InterpreterResult::ToggleTier(t)) => {
+                println!("{} {}", vm.pc, match &t { Tier::Deopt => "deopt", Tier::Opt => "opt" });
                 tier = t;
             }
             Err(msg) => {
