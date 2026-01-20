@@ -13,6 +13,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
     } else {
         Tier::Deopt
     };
+    tier = Tier::Deopt;
 
     loop {
         let result = match tier {
@@ -24,6 +25,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
                 return Ok(());
             }
             Ok(InterpreterResult::ToggleTier(t)) => {
+                println!("{}", vm.pc);
                 tier = t;
             }
             Err(msg) => {

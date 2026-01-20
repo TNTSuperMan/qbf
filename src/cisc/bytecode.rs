@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{cisc::interpret_deopt::{u32_to_delta_and_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
+use crate::{cisc::interpret_deopt::{u32_to_delta_and_two_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
 
 #[derive(Clone)]
 pub struct Bytecode {
@@ -22,9 +22,12 @@ pub enum OpCode {
     SetAdd,
     SetSet,
 
-    Shift,
-    ShiftAdd,
-    ShiftSet,
+    ShiftP,
+    ShiftN,
+    ShiftAddP,
+    ShiftAddN,
+    ShiftSetP,
+    ShiftSetN,
 
     MulStart,
     Mul,
@@ -54,7 +57,7 @@ pub enum OpCode {
 
 impl Debug for Bytecode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (delta2, val2) = u32_to_delta_and_val(self.addr);
+        let (delta2, val2, val3) = u32_to_delta_and_two_val(self.addr);
         let (d1, d2) = u32_to_two_delta(self.addr);
         let op = match self.opcode {
             OpCode::Breakpoint => format!("brk"),
@@ -66,9 +69,12 @@ impl Debug for Bytecode {
             OpCode::SetAdd => format!("set {}, {} add {}", self.val, delta2, val2),
             OpCode::SetSet => format!("set {}, {} set {}", self.val, delta2, val2),
 
-            OpCode::Shift => format!("shift {}", self.addr as i32),
-            OpCode::ShiftAdd => format!("shift {}, {} add {}", self.val as i8, delta2, val2),
-            OpCode::ShiftSet => format!("shift {}, {} set {}", self.val as i8, delta2, val2),
+            OpCode::ShiftP => format!("shift {}, prc {}", self.addr as i32, val3),
+            OpCode::ShiftN => format!("shift {}, nrc {}", self.addr as i32, val3),
+            OpCode::ShiftAddP => format!("shift {}, {} add {}, prc {}", self.val as i8, delta2, val2, val3),
+            OpCode::ShiftAddN => format!("shift {}, {} add {}, nrc {}", self.val as i8, delta2, val2, val3),
+            OpCode::ShiftSetP => format!("shift {}, {} set {}, prc {}", self.val as i8, delta2, val2, val3),
+            OpCode::ShiftSetN => format!("shift {}, {} set {}, nrc {}", self.val as i8, delta2, val2, val3),
 
             OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
             OpCode::Mul => format!("mul {}", self.val),
@@ -200,16 +206,21 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     }
 
                     IROp::Shift(step) => {
+                        let (range_sign, range) = range_info.map.get(&i).unwrap();
+                        let range_i8 = i8::try_from(*range as i16).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
                         if let Ok(step_i8) = i8::try_from(*step) {
                             match ir_nodes[i + 1] {
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
                                     let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
                                     bytecodes.push(Bytecode {
-                                        opcode: OpCode::ShiftAdd,
+                                        opcode: match range_sign {
+                                            Sign::Positive => OpCode::ShiftAddP,
+                                            Sign::Negative => OpCode::ShiftAddN,
+                                        },
                                         delta,
                                         val: step_i8 as u8,
-                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16),
+                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16) | ((range_i8 as u8 as u32) << 24),
                                     });
                                     i += 2;
                                     continue;
@@ -218,10 +229,13 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                                     let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
                                     bytecodes.push(Bytecode {
-                                        opcode: OpCode::ShiftSet,
+                                        opcode: match range_sign {
+                                            Sign::Positive => OpCode::ShiftSetP,
+                                            Sign::Negative => OpCode::ShiftSetN,
+                                        },
                                         delta,
                                         val: step_i8 as u8,
-                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16),
+                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16) | ((range_i8 as u8 as u32) << 24),
                                     });
                                     i += 2;
                                     continue;
@@ -230,9 +244,12 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             }
                         }
                         bytecodes.push(Bytecode {
-                            opcode: OpCode::Shift,
+                            opcode: match range_sign {
+                                Sign::Positive => OpCode::ShiftP,
+                                Sign::Negative => OpCode::ShiftN,
+                            },
                             delta,
-                            val: 0,
+                            val: range_i8 as u8,
                             addr: *step as i32 as u32,
                         });
                     }

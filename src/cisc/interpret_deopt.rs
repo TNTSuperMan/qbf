@@ -11,6 +11,15 @@ pub fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
 }
 
 #[inline(always)]
+pub fn u32_to_delta_and_two_val(val: u32) -> (i16, u8, u8) {
+    (
+        (val & 0xFFFF) as u16 as i16,
+        ((val >> 16) & 0xFF) as u8,
+        (val >> 24)  as u8,
+    )
+}
+
+#[inline(always)]
 pub fn u32_to_two_delta(val: u32) -> (i16, i16) {
     (
         (val & 0xFFFF) as u16 as i16,
@@ -74,30 +83,75 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.memory.set(vm.pointer, val)?;
             }
 
-            OpCode::Shift => {
+            OpCode::ShiftP => {
                 vm.pointer += bytecode.delta as isize;
                 let step = bytecode.addr as i32 as isize;
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.pointer += step;
                 }
+                if (bytecode.val as i8 as i16 as u16 as isize) > vm.pointer {
+                    println!("deopt{}", vm.pc);
+                }
             }
-            OpCode::ShiftAdd => {
+            OpCode::ShiftN => {
+                vm.pointer += bytecode.delta as isize;
+                let step = bytecode.addr as i32 as isize;
+                while vm.memory.get(vm.pointer)? != 0 {
+                    vm.pointer += step;
+                }
+                if (bytecode.val as i8 as i16 as u16 as isize) <= vm.pointer {
+                    println!("deopt{}", vm.pc);
+                }
+            }
+            OpCode::ShiftAddP => {
                 vm.pointer += bytecode.delta as isize;
                 let step = bytecode.val as i8 as isize;
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.pointer += step;
                 }
-                let (delta, val) = u32_to_delta_and_val(bytecode.addr);
+                let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
+                if (val2 as i8 as i16 as u16 as isize) > vm.pointer {
+                    println!("deopt{}", vm.pc);
+                }
                 vm.pointer += delta as isize;
                 vm.memory.add(vm.pointer, val)?;
             }
-            OpCode::ShiftSet => {
+            OpCode::ShiftAddN => {
                 vm.pointer += bytecode.delta as isize;
                 let step = bytecode.val as i8 as isize;
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.pointer += step;
                 }
-                let (delta, val) = u32_to_delta_and_val(bytecode.addr);
+                let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
+                if (val2 as i8 as i16 as u16 as isize) <= vm.pointer {
+                    println!("deopt{}", vm.pc);
+                }
+                vm.pointer += delta as isize;
+                vm.memory.add(vm.pointer, val)?;
+            }
+            OpCode::ShiftSetP => {
+                vm.pointer += bytecode.delta as isize;
+                let step = bytecode.val as i8 as isize;
+                while vm.memory.get(vm.pointer)? != 0 {
+                    vm.pointer += step;
+                }
+                let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
+                if (val2 as i8 as i16 as u16 as isize) > vm.pointer {
+                    println!("deopt{}", vm.pc);
+                }
+                vm.pointer += delta as isize;
+                vm.memory.set(vm.pointer, val)?;
+            }
+            OpCode::ShiftSetN => {
+                vm.pointer += bytecode.delta as isize;
+                let step = bytecode.val as i8 as isize;
+                while vm.memory.get(vm.pointer)? != 0 {
+                    vm.pointer += step;
+                }
+                let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
+                if (val2 as i8 as i16 as u16 as isize) <= vm.pointer {
+                    println!("deopt{}", vm.pc);
+                }
                 vm.pointer += delta as isize;
                 vm.memory.set(vm.pointer, val)?;
             }
@@ -222,7 +276,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             OpCode::PositiveRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
                 if (bytecode.val as i8 as i16 as u16 as isize) > vm.pointer {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                    println!("deopt{}", vm.pc);
                 }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
@@ -232,7 +286,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             OpCode::NegativeRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
                 if (bytecode.val as i8 as i16 as u16 as isize) <= vm.pointer {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                    println!("deopt{}", vm.pc);
                 }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
