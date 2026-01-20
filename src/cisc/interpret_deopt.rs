@@ -65,7 +65,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 if positive_out_of_range(bytecode.val, vm.pointer) {
-                    println!("deopt{}", vm.pc);
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             OpCode::ShiftN => {
@@ -75,7 +75,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 if negative_out_of_range(bytecode.val, vm.pointer) {
-                    println!("deopt{}", vm.pc);
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             OpCode::ShiftAddP => {
@@ -85,8 +85,10 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if positive_out_of_range(val2, vm.pointer) {
-                    println!("deopt{}", vm.pc);
+                if !positive_out_of_range(val2, vm.pointer) {
+                    vm.pointer += delta as isize;
+                    vm.memory.add(vm.pointer, val)?;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.pointer += delta as isize;
                 vm.memory.add(vm.pointer, val)?;
@@ -98,8 +100,10 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if negative_out_of_range(val2, vm.pointer) {
-                    println!("deopt{}", vm.pc);
+                if !negative_out_of_range(val2, vm.pointer) {
+                    vm.pointer += delta as isize;
+                    vm.memory.add(vm.pointer, val)?;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.pointer += delta as isize;
                 vm.memory.add(vm.pointer, val)?;
@@ -111,8 +115,10 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if positive_out_of_range(val2, vm.pointer) {
-                    println!("deopt{}", vm.pc);
+                if !positive_out_of_range(val2, vm.pointer) {
+                    vm.pointer += delta as isize;
+                    vm.memory.set(vm.pointer, val)?;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.pointer += delta as isize;
                 vm.memory.set(vm.pointer, val)?;
@@ -124,8 +130,10 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if negative_out_of_range(val2, vm.pointer) {
-                    println!("deopt{}", vm.pc);
+                if !negative_out_of_range(val2, vm.pointer) {
+                    vm.pointer += delta as isize;
+                    vm.memory.set(vm.pointer, val)?;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 vm.pointer += delta as isize;
                 vm.memory.set(vm.pointer, val)?;
@@ -250,22 +258,22 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
             OpCode::PositiveRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
-                if positive_out_of_range(bytecode.val, vm.pointer) {
-                    println!("deopt{}", vm.pc);
-                }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
+                }
+                if !positive_out_of_range(bytecode.val, vm.pointer) {
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             OpCode::NegativeRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
-                if negative_out_of_range(bytecode.val, vm.pointer) {
-                    println!("deopt{}", vm.pc);
-                }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
+                }
+                if !negative_out_of_range(bytecode.val, vm.pointer) {
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
 
