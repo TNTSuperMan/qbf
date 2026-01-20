@@ -16,7 +16,7 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
         let bytecode = vm.insts[vm.pc];
         
         #[cfg(feature = "trace")]
-        println!("[TRACE] tier: Opt ptr: {}, executing {}({:?})", vm.pointer, vm.pc, bytecode.opcode);
+        println!("[TRACE] tier: Opt ptr: {}, executing {} ({:?})", vm.pointer, vm.pc, bytecode.opcode);
         
         match bytecode.opcode {
             OpCode::Breakpoint => {
