@@ -1,31 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::cisc::{bytecode::OpCode, internal::{InterpreterResult, Tier}, vm::VM};
-
-#[inline(always)]
-pub fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
-    (
-        (val & 0xFFFF) as u16 as i16,
-        (val >> 16) as u8,
-    )
-}
-
-#[inline(always)]
-pub fn u32_to_delta_and_two_val(val: u32) -> (i16, u8, u8) {
-    (
-        (val & 0xFFFF) as u16 as i16,
-        ((val >> 16) & 0xFF) as u8,
-        (val >> 24)  as u8,
-    )
-}
-
-#[inline(always)]
-pub fn u32_to_two_delta(val: u32) -> (i16, i16) {
-    (
-        (val & 0xFFFF) as u16 as i16,
-        (val >> 16) as u16 as i16,
-    )
-}
+use crate::cisc::{bytecode::OpCode, internal::{InterpreterResult, Tier, u32_to_delta_and_two_val, u32_to_delta_and_val, u32_to_two_delta}, vm::VM};
 
 pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{cisc::interpret_deopt::{u32_to_delta_and_two_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
+use crate::{cisc::internal::{u32_to_delta_and_two_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
 
 #[derive(Clone)]
 pub struct Bytecode {
