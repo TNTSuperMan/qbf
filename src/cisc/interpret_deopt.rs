@@ -1,6 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::cisc::{bytecode::OpCode, vm::VM};
+use crate::cisc::{bytecode::OpCode, internal::{InterpreterResult, Tier}, vm::VM};
 
 #[inline(always)]
 pub fn u32_to_delta_and_val(val: u32) -> (i16, u8) {
@@ -18,7 +18,7 @@ pub fn u32_to_two_delta(val: u32) -> (i16, i16) {
     )
 }
 
-pub fn run(vm: &mut VM) -> Result<(), String> {
+pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
     let mut stdin = stdin().lock();
     let mut stdin_buf: [u8; 1] = [0];
@@ -221,8 +221,8 @@ pub fn run(vm: &mut VM) -> Result<(), String> {
             }
             OpCode::PositiveRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
-                if (bytecode.val as i8 as i16 as u16 as isize) <= vm.pointer {
-                    // TODO: deopt
+                if (bytecode.val as i8 as i16 as u16 as isize) > vm.pointer {
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
@@ -231,8 +231,8 @@ pub fn run(vm: &mut VM) -> Result<(), String> {
             }
             OpCode::NegativeRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
-                if (bytecode.val as i8 as i16 as u16 as isize) > vm.pointer {
-                    // TODO: deopt
+                if (bytecode.val as i8 as i16 as u16 as isize) <= vm.pointer {
+                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = bytecode.addr as usize;
@@ -241,7 +241,7 @@ pub fn run(vm: &mut VM) -> Result<(), String> {
             }
 
             OpCode::End => {
-                return Ok(());
+                return Ok(InterpreterResult::End);
             }
         }
         vm.pc += 1;
