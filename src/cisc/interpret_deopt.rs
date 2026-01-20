@@ -15,6 +15,9 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
 
         let bytecode = vm.insts[vm.pc];
         
+        #[cfg(feature = "trace")]
+        println!("[TRACE] tier: Deopt ptr: {}, executing {}({:?})", vm.pointer, vm.pc, bytecode.opcode);
+        
         match bytecode.opcode {
             OpCode::Breakpoint => {
                 vm.step_ptr(bytecode.delta as isize);

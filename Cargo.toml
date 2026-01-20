@@ -9,6 +9,7 @@ clap = { version = "4.5.53", features = ["derive"] }
 [features]
 default = ["debug"]
 debug = []
+trace = ["debug"]
 
 [profile.release]
 opt-level = 3

@@ -14,6 +14,8 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
     } else {
         Tier::Deopt
     };
+    #[cfg(feature = "trace")]
+    println!("[TRACE] first: {:?}", tier);
 
     loop {
         let result = match tier {
@@ -26,6 +28,8 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
                 return Ok(());
             }
             Ok(InterpreterResult::ToggleTier(t)) => {
+                #[cfg(feature = "trace")]
+                println!("[TRACE] tier switch to {:?}", t);
                 tier = t;
             }
             Err(msg) => {

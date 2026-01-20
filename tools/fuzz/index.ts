@@ -1,6 +1,6 @@
 import { $, file, sleep, spawn } from "bun";
 
-if ((await $`cargo build --release`).exitCode != 0) {
+if ((await $`cargo build --release --features=trace`).exitCode != 0) {
     process.exit();
 }
 
