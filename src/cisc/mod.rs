@@ -1,22 +1,37 @@
-use crate::{cisc::{bytecode::ir_to_bytecodes, interpret::run}, ir::IR, memory::Memory, trace::OperationCountMap};
+use crate::{cisc::{internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, trace::write_trace, vm::VM}, ir::IR, range::RangeInfo};
 
 mod bytecode;
-mod interpret;
+mod interpret_deopt;
+mod interpret_opt;
 mod trace;
+mod vm;
+mod internal;
 
-pub fn run_cisc(ir_nodes: &[IR]) -> Result<(), String> {
-    let bytecodes = ir_to_bytecodes(ir_nodes)?;
-    let mut memory = Memory::new();
-    let mut ocm = OperationCountMap::new(bytecodes.len());
-    run(&bytecodes, &mut memory, &mut ocm)?;
-    
-    #[cfg(feature = "debug")] {
-        use std::fs;
-        use crate::cisc::trace::generate_bytecode_trace;
+pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
+    let mut vm = VM::new(ir_nodes, range_info)?;
+    let mut tier = if range_info.do_opt_first {
+        Tier::Opt
+    } else {
+        Tier::Deopt
+    };
 
-        fs::write("./box/bytecodes", generate_bytecode_trace(&bytecodes, &ocm)).expect("failed to write");
-        fs::write("./box/memory", *memory.0).expect("failed to write");
+    loop {
+        let result = match tier {
+            Tier::Deopt => run_deopt(&mut vm),
+            Tier::Opt => unsafe { run_opt(&mut vm) },
+        };
+        match result {
+            Ok(InterpreterResult::End) => {
+                write_trace(&vm);
+                return Ok(());
+            }
+            Ok(InterpreterResult::ToggleTier(t)) => {
+                tier = t;
+            }
+            Err(msg) => {
+                write_trace(&vm);
+                return Err(msg);
+            }
+        }
     }
-
-    Ok(())
 }

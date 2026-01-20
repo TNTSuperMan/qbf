@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::{cisc::run_cisc, ir::parse_to_ir, risc::run_risc};
+use crate::{cisc::run_cisc, ir::parse_to_ir, range::generate_range_info, risc::run_risc};
 use clap::Parser;
 
 mod memory;
@@ -9,6 +9,7 @@ mod cisc;
 mod risc;
 mod trace;
 mod ssa;
+mod range;
 
 #[derive(Parser, Debug)]
 #[command(name = "qbf")]
@@ -33,7 +34,16 @@ fn main() {
         Ok(code) => {
             if let Some(count) = args.benchmark_count {
                 match parse_to_ir(&code) {
-                    Ok(_ir) => {},
+                    Ok(ir) => {
+                        match generate_range_info(&ir) {
+                            Ok(_ri) => {}
+                            Err(msg) => {
+                                eprintln!("{}", msg);
+                                eprintln!("Run without --benchmark-count for more details");
+                                return;
+                            }
+                        }
+                    },
                     Err(msg) => {
                         eprintln!("{}", msg);
                         eprintln!("Run without --benchmark-count for more details");
@@ -60,8 +70,9 @@ fn main() {
                         let start = Instant::now();
 
                         let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
+                        let range_info = generate_range_info(&ir).unwrap();
                         
-                        if let Err(err) = run_cisc(&ir) {
+                        if let Err(err) = run_cisc(&ir, &range_info) {
                             eprintln!("{}", err);
                             return;
                         }
@@ -81,13 +92,21 @@ fn main() {
                         return;
                     }
                 };
+                let range_info = match generate_range_info(&ir) {
+                    Ok(ri) => ri,
+                    Err(msg) => {
+                        // TODO: 詳細にエラーを出す仕組みにする
+                        eprintln!("{}", msg);
+                        return;
+                    }
+                };
 
                 if args.use_risc {
                     if let Err(msg) = run_risc(&ir) {
                         eprintln!("{}", msg);
                     }
                 } else {
-                    if let Err(msg) = run_cisc(&ir) {
+                    if let Err(msg) = run_cisc(&ir, &range_info) {
                         eprintln!("{}", msg);
                     }
                 }
@@ -95,7 +114,7 @@ fn main() {
                 #[cfg(feature = "debug")] {
                     use crate::{ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order}, trace::generate_ir_trace};
                     use std::fs;
-                    fs::write("./box/ir", generate_ir_trace(&ir)).expect("failed to write");
+                    fs::write("./box/ir", generate_ir_trace(&ir, &range_info)).expect("failed to write");
                     let noend_ir = &ir[0..ir.len()-1];
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
                     let one_round = inline_ssa_history(&raw);

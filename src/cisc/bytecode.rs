@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use crate::{cisc::interpret::{u32_to_delta_and_val, u32_to_two_delta}, ir::{IR, IROp}};
+use crate::{cisc::internal::{u32_to_delta_and_two_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Bytecode {
     pub opcode: OpCode,
     pub delta: i16,
@@ -10,7 +10,7 @@ pub struct Bytecode {
     pub addr: u32,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum OpCode {
     Breakpoint,
@@ -22,9 +22,12 @@ pub enum OpCode {
     SetAdd,
     SetSet,
 
-    Shift,
-    ShiftAdd,
-    ShiftSet,
+    ShiftP,
+    ShiftN,
+    ShiftAddP,
+    ShiftAddN,
+    ShiftSetP,
+    ShiftSetN,
 
     MulStart,
     Mul,
@@ -46,13 +49,15 @@ pub enum OpCode {
 
     JmpIfZero, // LoopStart
     JmpIfNotZero, // LoopEnd
+    PositiveRangeCheckJNZ, // LoopEndWithOffset
+    NegativeRangeCheckJNZ,
 
     End,
 }
 
 impl Debug for Bytecode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (delta2, val2) = u32_to_delta_and_val(self.addr);
+        let (delta2, val2, val3) = u32_to_delta_and_two_val(self.addr);
         let (d1, d2) = u32_to_two_delta(self.addr);
         let op = match self.opcode {
             OpCode::Breakpoint => format!("brk"),
@@ -64,9 +69,12 @@ impl Debug for Bytecode {
             OpCode::SetAdd => format!("set {}, {} add {}", self.val, delta2, val2),
             OpCode::SetSet => format!("set {}, {} set {}", self.val, delta2, val2),
 
-            OpCode::Shift => format!("shift {}", self.addr as i32),
-            OpCode::ShiftAdd => format!("shift {}, {} add {}", self.val as i8, delta2, val2),
-            OpCode::ShiftSet => format!("shift {}, {} set {}", self.val as i8, delta2, val2),
+            OpCode::ShiftP => format!("shift {}, prc {}", self.addr as i32, val3),
+            OpCode::ShiftN => format!("shift {}, nrc {}", self.addr as i32, val3),
+            OpCode::ShiftAddP => format!("shift {}, {} add {}, prc {}", self.val as i8, delta2, val2, val3),
+            OpCode::ShiftAddN => format!("shift {}, {} add {}, nrc {}", self.val as i8, delta2, val2, val3),
+            OpCode::ShiftSetP => format!("shift {}, {} set {}, prc {}", self.val as i8, delta2, val2, val3),
+            OpCode::ShiftSetN => format!("shift {}, {} set {}, nrc {}", self.val as i8, delta2, val2, val3),
 
             OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
             OpCode::Mul => format!("mul {}", self.val),
@@ -88,6 +96,8 @@ impl Debug for Bytecode {
 
             OpCode::JmpIfZero => format!("jpz {}", self.addr),
             OpCode::JmpIfNotZero => format!("jpnz {}", self.addr),
+            OpCode::PositiveRangeCheckJNZ => format!("prc {}, jpnz {}", self.val as i8, self.addr),
+            OpCode::NegativeRangeCheckJNZ => format!("nrc {}, jpnz {}", self.val as i8, self.addr),
 
             OpCode::End => format!("end"),
         };
@@ -96,7 +106,7 @@ impl Debug for Bytecode {
     }
 }
 
-pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
+pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Bytecode>, String> {
     let mut bytecodes: Vec<Bytecode> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
 
@@ -196,16 +206,21 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                     }
 
                     IROp::Shift(step) => {
+                        let (range_sign, range) = range_info.map.get(&i).unwrap();
+                        let range_i8 = i8::try_from(*range as i16).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
                         if let Ok(step_i8) = i8::try_from(*step) {
                             match ir_nodes[i + 1] {
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
                                     let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
                                     bytecodes.push(Bytecode {
-                                        opcode: OpCode::ShiftAdd,
+                                        opcode: match range_sign {
+                                            Sign::Positive => OpCode::ShiftAddP,
+                                            Sign::Negative => OpCode::ShiftAddN,
+                                        },
                                         delta,
                                         val: step_i8 as u8,
-                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16),
+                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16) | ((range_i8 as u8 as u32) << 24),
                                     });
                                     i += 2;
                                     continue;
@@ -214,10 +229,13 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                                     let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
                                     bytecodes.push(Bytecode {
-                                        opcode: OpCode::ShiftSet,
+                                        opcode: match range_sign {
+                                            Sign::Positive => OpCode::ShiftSetP,
+                                            Sign::Negative => OpCode::ShiftSetN,
+                                        },
                                         delta,
                                         val: step_i8 as u8,
-                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16),
+                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16) | ((range_i8 as u8 as u32) << 24),
                                     });
                                     i += 2;
                                     continue;
@@ -226,9 +244,12 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                             }
                         }
                         bytecodes.push(Bytecode {
-                            opcode: OpCode::Shift,
+                            opcode: match range_sign {
+                                Sign::Positive => OpCode::ShiftP,
+                                Sign::Negative => OpCode::ShiftN,
+                            },
                             delta,
-                            val: 0,
+                            val: range_i8 as u8,
                             addr: *step as i32 as u32,
                         });
                     }
@@ -353,16 +374,24 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR]) -> Result<Vec<Bytecode>, String> {
                         });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
-                        let start = loop_stack.pop().unwrap();
-                        let end = bytecodes.len();
-                        last_ptr -= offset;
-                        bytecodes[start].addr = (end + 1) as u32;
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::JmpIfNotZero,
-                            delta,
-                            val: 0,
-                            addr: (start + 1) as u32,
-                        });
+                        let (range_sign, range) = range_info.map.get(&i).unwrap();
+                        if let Ok(range_i8) = i8::try_from(*range as i16) {
+                            let start = loop_stack.pop().unwrap();
+                            let end = bytecodes.len();
+                            last_ptr -= offset;
+                            bytecodes[start].addr = (end + 1) as u32;
+                            bytecodes.push(Bytecode {
+                                opcode: match range_sign {
+                                    Sign::Positive => OpCode::PositiveRangeCheckJNZ,
+                                    Sign::Negative => OpCode::NegativeRangeCheckJNZ,
+                                },
+                                delta,
+                                val: range_i8 as u8,
+                                addr: (start + 1) as u32,
+                            });
+                        } else {
+                            return Err("OptimizationError: Pointer Range Overflow".to_owned())
+                        }
                     }
 
                     IROp::End => {

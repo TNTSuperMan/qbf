@@ -17,14 +17,20 @@ impl OperationCountMap {
 }
 
 #[cfg(feature = "debug")]
-use crate::ir::IR;
+use crate::{ir::IR, range::RangeInfo};
 
 #[cfg(feature = "debug")]
-pub fn generate_ir_trace(ir_nodes: &[IR]) -> String {
+pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
     let mut str = String::new();
     let mut lv: usize = 0;
 
-    for ir in ir_nodes {
+    if range.do_opt_first {
+        str += "opt\n";
+    } else {
+        str += "deopt\n";
+    }
+
+    for (i, ir) in ir_nodes.iter().enumerate() {
         use crate::ir::IROp;
 
         if let IROp::LoopEnd(_) = ir.opcode {
@@ -33,7 +39,17 @@ pub fn generate_ir_trace(ir_nodes: &[IR]) -> String {
         if let IROp::LoopEndWithOffset(_, _) = ir.opcode {
             lv -= 1;
         }
-        str += &format!("{}{} {:?}\n", "    ".repeat(lv), ir.pointer, ir.opcode);
+        if let Some(ri) = range.map.get(&i) {
+            use crate::range::Sign;
+
+            str += &format!("{}{} {:?} ({})\n", "    ".repeat(lv), ir.pointer, ir.opcode, match ri.0 {
+                Sign::Positive => format!("ptr <= {}", ri.1),
+                Sign::Negative => format!("ptr >= {}", ri.1),
+            });
+        } else {
+            str += &format!("{}{} {:?}\n", "    ".repeat(lv), ir.pointer, ir.opcode);
+        }
+
         if let IROp::LoopStart(_) = ir.opcode {
             lv += 1;
         }
