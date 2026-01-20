@@ -5,7 +5,7 @@ pub struct VM {
     pub memory: Memory,
     pub ocm: OperationCountMap,
     pub pc: usize,
-    pub pointer: isize,
+    pub pointer: usize,
 }
 
 impl VM {
