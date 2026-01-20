@@ -1,21 +1,20 @@
-use crate::{cisc::{bytecode::ir_to_bytecodes, interpret::run}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
+use crate::{cisc::{interpret::run, vm::VM}, ir::IR, range::RangeInfo};
 
 mod bytecode;
 mod interpret;
 mod trace;
+mod vm;
 
 pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
-    let bytecodes = ir_to_bytecodes(ir_nodes, range_info)?;
-    let mut memory = Memory::new();
-    let mut ocm = OperationCountMap::new(bytecodes.len());
-    let result = run(&bytecodes, &mut memory, &mut ocm);
+    let mut vm = VM::new(ir_nodes, range_info)?;
+    let result = run(&mut vm);
     
     #[cfg(feature = "debug")] {
         use std::fs;
         use crate::cisc::trace::generate_bytecode_trace;
 
-        fs::write("./box/bytecodes", generate_bytecode_trace(&bytecodes, &ocm)).expect("failed to write");
-        fs::write("./box/memory", *memory.0).expect("failed to write");
+        fs::write("./box/bytecodes", generate_bytecode_trace(&vm.insts, &vm.ocm)).expect("failed to write");
+        fs::write("./box/memory", *vm.memory.0).expect("failed to write");
     }
 
     result
