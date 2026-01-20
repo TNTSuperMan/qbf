@@ -2,7 +2,7 @@ use std::io::{Read, Write, stdin, stdout};
 
 use crate::cisc::{bytecode::OpCode, internal::{InterpreterResult, Tier, negative_out_of_range, positive_out_of_range, u32_to_delta_and_two_val, u32_to_delta_and_val, u32_to_two_delta}, vm::VM};
 
-pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
+pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
     let mut stdin = stdin().lock();
     let mut stdin_buf: [u8; 1] = [0];
@@ -23,39 +23,39 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
 
             OpCode::SingleAdd => {
                 vm.pointer += bytecode.delta as isize as usize;
-                vm.memory.add(vm.pointer, bytecode.val)?;
+                vm.memory.add_unchecked(vm.pointer, bytecode.val);
             }
             OpCode::SingleSet => {
                 vm.pointer += bytecode.delta as isize as usize;
-                vm.memory.set(vm.pointer, bytecode.val)?;
+                vm.memory.set_unchecked(vm.pointer, bytecode.val);
             }
             OpCode::AddAdd => {
                 vm.pointer += bytecode.delta as isize as usize;
-                vm.memory.add(vm.pointer, bytecode.val)?;
+                vm.memory.add_unchecked(vm.pointer, bytecode.val);
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 vm.pointer += delta as isize as usize;
-                vm.memory.add(vm.pointer, val)?;
+                vm.memory.add_unchecked(vm.pointer, val);
             }
             OpCode::AddSet => {
                 vm.pointer += bytecode.delta as isize as usize;
-                vm.memory.add(vm.pointer, bytecode.val)?;
+                vm.memory.add_unchecked(vm.pointer, bytecode.val);
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 vm.pointer += delta as isize as usize;
-                vm.memory.set(vm.pointer, val)?;
+                vm.memory.set_unchecked(vm.pointer, val);
             }
             OpCode::SetAdd => {
                 vm.pointer += bytecode.delta as isize as usize;
-                vm.memory.set(vm.pointer, bytecode.val)?;
+                vm.memory.set_unchecked(vm.pointer, bytecode.val);
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 vm.pointer += delta as isize as usize;
-                vm.memory.add(vm.pointer, val)?;
+                vm.memory.add_unchecked(vm.pointer, val);
             }
             OpCode::SetSet => {
                 vm.pointer += bytecode.delta as isize as usize;
-                vm.memory.set(vm.pointer, bytecode.val)?;
+                vm.memory.set_unchecked(vm.pointer, bytecode.val);
                 let (delta, val) = u32_to_delta_and_val(bytecode.addr);
                 vm.pointer += delta as isize as usize;
-                vm.memory.set(vm.pointer, val)?;
+                vm.memory.set_unchecked(vm.pointer, val);
             }
 
             OpCode::ShiftP => {
@@ -64,8 +64,9 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.pointer += step;
                 }
-                if !positive_out_of_range(bytecode.val, vm.pointer) {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                if positive_out_of_range(bytecode.val, vm.pointer) {
+                    vm.pc += 1;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
             }
             OpCode::ShiftN => {
@@ -74,8 +75,9 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.pointer += step;
                 }
-                if !negative_out_of_range(bytecode.val, vm.pointer) {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                if negative_out_of_range(bytecode.val, vm.pointer) {
+                    vm.pc += 1;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
             }
             OpCode::ShiftAddP => {
@@ -85,13 +87,14 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if !positive_out_of_range(val2, vm.pointer) {
+                if positive_out_of_range(val2, vm.pointer) {
                     vm.pointer += delta as isize as usize;
                     vm.memory.add(vm.pointer, val)?;
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                    vm.pc += 1;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.pointer += delta as isize as usize;
-                vm.memory.add(vm.pointer, val)?;
+                vm.memory.add_unchecked(vm.pointer, val);
             }
             OpCode::ShiftAddN => {
                 vm.pointer += bytecode.delta as isize as usize;
@@ -103,10 +106,11 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 if !negative_out_of_range(val2, vm.pointer) {
                     vm.pointer += delta as isize as usize;
                     vm.memory.add(vm.pointer, val)?;
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                    vm.pc += 1;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.pointer += delta as isize as usize;
-                vm.memory.add(vm.pointer, val)?;
+                vm.memory.add_unchecked(vm.pointer, val);
             }
             OpCode::ShiftSetP => {
                 vm.pointer += bytecode.delta as isize as usize;
@@ -118,10 +122,11 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 if !positive_out_of_range(val2, vm.pointer) {
                     vm.pointer += delta as isize as usize;
                     vm.memory.set(vm.pointer, val)?;
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                    vm.pc += 1;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.pointer += delta as isize as usize;
-                vm.memory.set(vm.pointer, val)?;
+                vm.memory.set_unchecked(vm.pointer, val);
             }
             OpCode::ShiftSetN => {
                 vm.pointer += bytecode.delta as isize as usize;
@@ -130,150 +135,161 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if !negative_out_of_range(val2, vm.pointer) {
+                if negative_out_of_range(val2, vm.pointer) {
                     vm.pointer += delta as isize as usize;
                     vm.memory.set(vm.pointer, val)?;
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
+                    vm.pc += 1;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.pointer += delta as isize as usize;
-                vm.memory.set(vm.pointer, val)?;
+                vm.memory.set_unchecked(vm.pointer, val);
             }
 
             OpCode::MulStart => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let val = vm.memory.get(vm.pointer)?;
+                let val = vm.memory.get_unchecked(vm.pointer);
                 if val == 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
                 } else {
                     mul_val = val;
-                    vm.memory.set(vm.pointer, 0)?;
+                    vm.memory.set_unchecked(vm.pointer, 0);
                 }
             }
             OpCode::Mul => {
-                vm.memory.add(vm.pointer + bytecode.delta as isize as usize, mul_val.wrapping_mul(bytecode.val))?;
+                vm.memory.add_unchecked(vm.pointer + bytecode.delta as isize as usize, mul_val.wrapping_mul(bytecode.val));
             }
 
             OpCode::SingleMoveAdd => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let v = vm.memory.get(vm.pointer)?;
+                let v = vm.memory.get_unchecked(vm.pointer);
                 if v != 0 {
-                    vm.memory.set(vm.pointer, 0)?;
-                    vm.memory.add(vm.pointer + (bytecode.addr as i32 as isize as usize), v)?;
+                    vm.memory.set_unchecked(vm.pointer, 0);
+                    vm.memory.add_unchecked(vm.pointer + (bytecode.addr as i32 as isize as usize), v);
                 }
             }
             OpCode::SingleMoveSub => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let v = vm.memory.get(vm.pointer)?;
+                let v = vm.memory.get_unchecked(vm.pointer);
                 if v != 0 {
-                    vm.memory.set(vm.pointer, 0)?;
-                    vm.memory.sub(vm.pointer + (bytecode.addr as i32 as isize as usize), v)?;
+                    vm.memory.set_unchecked(vm.pointer, 0);
+                    vm.memory.sub_unchecked(vm.pointer + (bytecode.addr as i32 as isize as usize), v);
                 }
             }
 
             OpCode::DoubleMoveAddAdd => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let v = vm.memory.get(vm.pointer)?;
+                let v = vm.memory.get_unchecked(vm.pointer);
                 if v != 0 {
                     let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.add(vm.pointer + d1 as isize as usize, v)?;
-                    vm.memory.add(vm.pointer + d2 as isize as usize, v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    vm.memory.add_unchecked(vm.pointer + d1 as isize as usize, v);
+                    vm.memory.add_unchecked(vm.pointer + d2 as isize as usize, v);
+                    vm.memory.set_unchecked(vm.pointer, 0);
                 }
             }
             OpCode::DoubleMoveAddSub => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let v = vm.memory.get(vm.pointer)?;
+                let v = vm.memory.get_unchecked(vm.pointer);
                 if v != 0 {
                     let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.add(vm.pointer + d1 as isize as usize, v)?;
-                    vm.memory.sub(vm.pointer + d2 as isize as usize, v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    vm.memory.add_unchecked(vm.pointer + d1 as isize as usize, v);
+                    vm.memory.sub_unchecked(vm.pointer + d2 as isize as usize, v);
+                    vm.memory.set_unchecked(vm.pointer, 0);
                 }
             }
             OpCode::DoubleMoveSubAdd => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let v = vm.memory.get(vm.pointer)?;
+                let v = vm.memory.get_unchecked(vm.pointer);
                 if v != 0 {
                     let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.sub(vm.pointer + d1 as isize as usize, v)?;
-                    vm.memory.add(vm.pointer + d2 as isize as usize, v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    vm.memory.sub_unchecked(vm.pointer + d1 as isize as usize, v);
+                    vm.memory.add_unchecked(vm.pointer + d2 as isize as usize, v);
+                    vm.memory.set_unchecked(vm.pointer, 0);
                 }
             }
             OpCode::DoubleMoveSubSub => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let v = vm.memory.get(vm.pointer)?;
+                let v = vm.memory.get_unchecked(vm.pointer);
                 if v != 0 {
                     let (d1, d2) = u32_to_two_delta(bytecode.addr);
-                    vm.memory.sub(vm.pointer + d1 as isize as usize, v)?;
-                    vm.memory.sub(vm.pointer + d2 as isize as usize, v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    vm.memory.sub_unchecked(vm.pointer + d1 as isize as usize, v);
+                    vm.memory.sub_unchecked(vm.pointer + d2 as isize as usize, v);
+                    vm.memory.set_unchecked(vm.pointer, 0);
                 }
             }
 
             OpCode::MoveStart => {
                 vm.pointer += bytecode.delta as isize as usize;
-                let val = vm.memory.get(vm.pointer)?;
+                let val = vm.memory.get_unchecked(vm.pointer);
                 if val == 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
                 } else {
                     mul_val = val;
-                    vm.memory.set(vm.pointer, 0)?;
+                    vm.memory.set_unchecked(vm.pointer, 0);
                 }
             }
             OpCode::MoveAdd => {
-                vm.memory.add(vm.pointer + bytecode.delta as isize as usize, mul_val)?;
+                vm.memory.add_unchecked(vm.pointer + bytecode.delta as isize as usize, mul_val);
             }
             OpCode::MoveSub => {
-                vm.memory.sub(vm.pointer + bytecode.delta as isize as usize, mul_val)?;
+                vm.memory.sub_unchecked(vm.pointer + bytecode.delta as isize as usize, mul_val);
             }
 
             OpCode::In => {
                 vm.pointer += bytecode.delta as isize as usize;
                 match stdin.read_exact(&mut stdin_buf) {
-                    Ok(_) => vm.memory.set(vm.pointer, stdin_buf[0])?,
-                    Err(_) => vm.memory.set(vm.pointer, 0)?,
+                    Ok(_) => vm.memory.set_unchecked(vm.pointer, stdin_buf[0]),
+                    Err(_) => vm.memory.set_unchecked(vm.pointer, 0),
                 }
             }
             OpCode::Out => {
                 vm.pointer += bytecode.delta as isize as usize;
-                stdout.write(&[vm.memory.get(vm.pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
+                stdout.write(&[vm.memory.get_unchecked(vm.pointer)]).map_err(|_| "Runtime Error: Failed to print")?;
             }
 
             OpCode::JmpIfZero => {
                 vm.pointer += bytecode.delta as isize as usize;
-                if vm.memory.get(vm.pointer)? == 0 {
+                if vm.memory.get_unchecked(vm.pointer) == 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
                 }
             }
             OpCode::JmpIfNotZero => {
                 vm.pointer += bytecode.delta as isize as usize;
-                if vm.memory.get(vm.pointer)? != 0 {
+                if vm.memory.get_unchecked(vm.pointer) != 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
                 }
             }
             OpCode::PositiveRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize as usize;
-                if vm.memory.get(vm.pointer)? != 0 {
+                if positive_out_of_range(bytecode.val, vm.pointer) {
+                    if vm.memory.get(vm.pointer)? != 0 {
+                        vm.pc = bytecode.addr as usize;
+                    } else {
+                        vm.pc += 1;
+                    }
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
+                }
+                if vm.memory.get_unchecked(vm.pointer) != 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
-                }
-                if !positive_out_of_range(bytecode.val, vm.pointer) {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             OpCode::NegativeRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize as usize;
-                if vm.memory.get(vm.pointer)? != 0 {
+                if negative_out_of_range(bytecode.val, vm.pointer) {
+                    if vm.memory.get(vm.pointer)? != 0 {
+                        vm.pc = bytecode.addr as usize;
+                    } else {
+                        vm.pc += 1;
+                    }
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
+                }
+                if vm.memory.get_unchecked(vm.pointer) != 0 {
                     vm.pc = bytecode.addr as usize;
                     continue;
-                }
-                if !negative_out_of_range(bytecode.val, vm.pointer) {
-                    return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
 

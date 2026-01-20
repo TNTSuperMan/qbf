@@ -1,7 +1,8 @@
-use crate::{cisc::{internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, trace::write_trace, vm::VM}, ir::IR, range::RangeInfo};
+use crate::{cisc::{internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, trace::write_trace, vm::VM}, ir::IR, range::RangeInfo};
 
 mod bytecode;
 mod interpret_deopt;
+mod interpret_opt;
 mod trace;
 mod vm;
 mod internal;
@@ -17,7 +18,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
     loop {
         let result = match tier {
             Tier::Deopt => run_deopt(&mut vm),
-            Tier::Opt => unimplemented!(),
+            Tier::Opt => unsafe { run_opt(&mut vm) },
         };
         match result {
             Ok(InterpreterResult::End) => {
