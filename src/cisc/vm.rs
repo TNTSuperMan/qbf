@@ -20,4 +20,7 @@ impl VM {
             pointer: 0,
         })
     }
+    pub fn step_ptr(&mut self, delta: isize) {
+        self.pointer = self.pointer.wrapping_add_signed(delta);
+    }
 }

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::{cisc::internal::{u32_to_delta_and_two_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Bytecode {
     pub opcode: OpCode,
     pub delta: i16,
@@ -10,7 +10,7 @@ pub struct Bytecode {
     pub addr: u32,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum OpCode {
     Breakpoint,
