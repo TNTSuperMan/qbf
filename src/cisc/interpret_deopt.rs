@@ -1,6 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::cisc::{bytecode::OpCode, internal::{InterpreterResult, Tier, u32_to_delta_and_two_val, u32_to_delta_and_val, u32_to_two_delta}, vm::VM};
+use crate::cisc::{bytecode::OpCode, internal::{InterpreterResult, Tier, negative_out_of_range, positive_out_of_range, u32_to_delta_and_two_val, u32_to_delta_and_val, u32_to_two_delta}, vm::VM};
 
 pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
@@ -64,7 +64,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.pointer += step;
                 }
-                if (bytecode.val as i8 as i16 as u16 as isize) <= vm.pointer {
+                if positive_out_of_range(bytecode.val, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
             }
@@ -74,7 +74,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.pointer += step;
                 }
-                if (bytecode.val as i8 as i16 as u16 as isize) > vm.pointer {
+                if negative_out_of_range(bytecode.val, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
             }
@@ -85,7 +85,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if (val2 as i8 as i16 as u16 as isize) <= vm.pointer {
+                if positive_out_of_range(val2, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
                 vm.pointer += delta as isize;
@@ -98,7 +98,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if (val2 as i8 as i16 as u16 as isize) > vm.pointer {
+                if negative_out_of_range(val2, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
                 vm.pointer += delta as isize;
@@ -111,7 +111,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if (val2 as i8 as i16 as u16 as isize) <= vm.pointer {
+                if positive_out_of_range(val2, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
                 vm.pointer += delta as isize;
@@ -124,7 +124,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.pointer += step;
                 }
                 let (delta, val, val2) = u32_to_delta_and_two_val(bytecode.addr);
-                if (val2 as i8 as i16 as u16 as isize) > vm.pointer {
+                if negative_out_of_range(val2, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
                 vm.pointer += delta as isize;
@@ -250,7 +250,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
             OpCode::PositiveRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
-                if (bytecode.val as i8 as i16 as u16 as isize) <= vm.pointer {
+                if positive_out_of_range(bytecode.val, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
                 if vm.memory.get(vm.pointer)? != 0 {
@@ -260,7 +260,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
             OpCode::NegativeRangeCheckJNZ => {
                 vm.pointer += bytecode.delta as isize;
-                if (bytecode.val as i8 as i16 as u16 as isize) > vm.pointer {
+                if negative_out_of_range(bytecode.val, vm.pointer) {
                     println!("deopt{}", vm.pc);
                 }
                 if vm.memory.get(vm.pointer)? != 0 {

@@ -32,3 +32,13 @@ pub fn u32_to_two_delta(val: u32) -> (i16, i16) {
         (val >> 16) as u16 as i16,
     )
 }
+
+#[inline(always)]
+pub fn positive_out_of_range(r: u8, pointer: isize) -> bool {
+    (r as i8 as i16 as u16 as isize) <= pointer
+}
+
+#[inline(always)]
+pub fn negative_out_of_range(r: u8, pointer: isize) -> bool {
+    (r as i8 as i16 as u16 as isize) > pointer
+}
