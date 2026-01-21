@@ -206,8 +206,8 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     }
 
                     IROp::Shift(step) => {
-                        let (range_sign, range) = range_info.map.get(&i).unwrap();
-                        let range_i8 = i8::try_from(*range as i16).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                        let range_data = range_info.map.get(&i).unwrap();
+                        /*let range_i8 = i8::try_from(*range as i16).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
                         if let Ok(step_i8) = i8::try_from(*step) {
                             match ir_nodes[i + 1] {
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
@@ -251,7 +251,8 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             delta,
                             val: range_i8 as u8,
                             addr: *step as i32 as u32,
-                        });
+                        });*/
+                        unimplemented!();
                     }
                     IROp::MulAndSetZero(dests) => {
                         let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
@@ -374,6 +375,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
+                        /*
                         let (range_sign, range) = range_info.map.get(&i).unwrap();
                         if let Ok(range_i8) = i8::try_from(*range as i16) {
                             let start = loop_stack.pop().unwrap();
@@ -391,7 +393,8 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             });
                         } else {
                             return Err("OptimizationError: Pointer Range Overflow".to_owned())
-                        }
+                        }*/
+                        unimplemented!();
                     }
 
                     IROp::End => {

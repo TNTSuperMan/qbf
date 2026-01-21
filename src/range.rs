@@ -18,7 +18,7 @@ impl Sign {
 }
 
 struct InternalRangeInfo {
-    map: HashMap<usize, (Sign, isize, isize)>,
+    map: HashMap<usize, (Sign, isize, isize, isize)>, // pointer, pos, neg
     curr_positive: isize,
     curr_negative: isize,
 }
@@ -39,44 +39,54 @@ impl InternalRangeInfo {
         }
     }
     pub fn insert(&mut self, ir_at: usize, sign: Sign, pointer: isize) {
-        self.map.insert(ir_at, (sign, pointer, match sign {
-            Sign::Positive => self.curr_positive,
-            Sign::Negative => self.curr_negative,
-        }));
+        self.map.insert(ir_at, (sign, pointer, self.curr_positive, self.curr_negative));
         self.curr_positive = pointer;
         self.curr_negative = pointer;
     }
     pub fn apply_loop(&mut self, ir_at: usize) {
         let ri = self.map.get_mut(&ir_at).unwrap();
-        match &ri.0 {
-            Sign::Positive => {
-                if ri.2 < self.curr_positive {
-                    ri.2 = self.curr_positive;
-                }
-            }
-            Sign::Negative => {
-                if ri.2 > self.curr_negative {
-                    ri.2 = self.curr_negative;
-                }
-            }
+        if ri.2 < self.curr_positive {
+            ri.2 = self.curr_positive;
+        }
+        if ri.3 > self.curr_negative {
+            ri.3 = self.curr_negative;
         }
     }
 }
 
 pub struct RangeInfo {
-    pub map: HashMap<usize, (Sign, u16)>,
+    pub map: HashMap<usize, RangeData>,
     pub do_opt_first: bool,
+}
+
+#[derive(Debug)]
+pub enum RangeData {
+    Positive(u16),
+    Negative(u16),
+    Both(u16, u16), // pos, neg
 }
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeInfo) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, r))| {
-            if let Ok(ri16) = i16::try_from(ptr - r) {
-                match sign {
-                    Sign::Positive => Ok((ir_at, (sign, ri16.wrapping_sub(1) as u16))),
-                    Sign::Negative => Ok((ir_at, (sign, ri16 as u16))),
+        let map_arr: Result<Vec<(usize, RangeData)>, String> = internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, pos, neg))| {
+            match sign {
+                Sign::Positive => {
+                    let pos16 = i16::try_from(ptr - pos).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    if neg >= ptr {
+                        Ok((ir_at, RangeData::Positive(pos16.wrapping_sub(1) as u16)))
+                    } else {
+                        let pos16n = i16::try_from(ptr - neg).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                        Err(format!("Err+ neg:{} ptr:{} pos:{} pos16:{}, 16n:{}", neg, ptr, pos, pos16 as u16, pos16n as u16))
+                    }
                 }
-            } else {
-                Err("OptimizationError: Pointer Range Overflow".to_owned())
+                Sign::Negative => {
+                    let pos16 = i16::try_from(ptr - neg).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    if pos <= ptr {
+                        Ok((ir_at, RangeData::Negative(pos16 as u16)))
+                    } else {
+                        let pos16n = i16::try_from(ptr - pos).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                        Err(format!("Err- neg:{} ptr:{} pos:{} pos16:{}, 16n:{}", neg, ptr, pos, pos16 as u16, pos16n.wrapping_sub(1) as u16))
+                    }
+                }
             }
         }).collect();
         Ok(RangeInfo {

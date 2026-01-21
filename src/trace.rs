@@ -40,12 +40,7 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
             lv -= 1;
         }
         if let Some(ri) = range.map.get(&i) {
-            use crate::range::Sign;
-
-            str += &format!("{}{} {:?} ({})\n", "    ".repeat(lv), ir.pointer, ir.opcode, match ri.0 {
-                Sign::Positive => format!("ptr <= {}", ri.1),
-                Sign::Negative => format!("ptr >= {}", ri.1),
-            });
+            str += &format!("{}{} {:?} ({:?})\n", "    ".repeat(lv), ir.pointer, ir.opcode, ri);
         } else {
             str += &format!("{}{} {:?}\n", "    ".repeat(lv), ir.pointer, ir.opcode);
         }
