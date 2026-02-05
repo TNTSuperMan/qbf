@@ -1,7 +1,7 @@
-use crate::{cisc::bytecode::{Bytecode, ir_to_bytecodes}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
+use crate::{cisc::bytecode::{NewBytecode, ir_to_bytecodes}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
 
 pub struct VM {
-    pub insts: Box<[Bytecode]>,
+    pub insts: Box<[NewBytecode]>,
     pub memory: Memory,
     pub ocm: OperationCountMap,
     pub pc: usize,
