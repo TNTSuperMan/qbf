@@ -200,11 +200,11 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.memory.set_unchecked(vm.pointer, 0);
                 }
             }
-            NewBytecode::MoveAdd { delta, to } => {
-                vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(to as isize), mul_val);
+            NewBytecode::MoveAdd { delta } => {
+                vm.memory.add_unchecked(vm.pointer.wrapping_add_signed(delta as isize), mul_val);
             }
-            NewBytecode::MoveSub { delta, to } => {
-                vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(to as isize), mul_val);
+            NewBytecode::MoveSub { delta } => {
+                vm.memory.sub_unchecked(vm.pointer.wrapping_add_signed(delta as isize), mul_val);
             }
 
             NewBytecode::In { delta } => {
@@ -265,6 +265,7 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
 
             NewBytecode::End { delta } => {
+                vm.step_ptr(delta as isize);
                 return Ok(InterpreterResult::End);
             }
         }

@@ -1,14 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{cisc::internal::{u32_to_delta_and_two_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
-
-#[derive(Clone, Copy)]
-pub struct Bytecode {
-    pub opcode: OpCode,
-    pub delta: i16,
-    pub val: u8,
-    pub addr: u32,
-}
+use crate::{ir::{IR, IROp}, range::{RangeInfo, Sign}};
 
 // メモ: jz ゼロ時ジャンプ jnz 非ゼロ時ジャンプ
 
@@ -42,8 +34,8 @@ pub enum NewBytecode {
     DoubleMoveSubSub { delta: i16, to1: i16, to2: i16 },
 
     MoveStart { delta: i16, jz: u32 },
-    MoveAdd { delta: i16, to: i16 },
-    MoveSub { delta: i16, to: i16 },
+    MoveAdd { delta: i16 },
+    MoveSub { delta: i16 },
 
     In { delta: i16 },
     Out { delta: i16 },
@@ -54,102 +46,6 @@ pub enum NewBytecode {
     NegativeRangeCheckJNZ { delta: i16, val: u8, addr: u32 },
 
     End { delta: i16 },
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u8)]
-pub enum OpCode {
-    Breakpoint,
-
-    SingleAdd,
-    SingleSet,
-    AddAdd,
-    AddSet,
-    SetAdd,
-    SetSet,
-
-    ShiftP,
-    ShiftN,
-    ShiftAddP,
-    ShiftAddN,
-    ShiftSetP,
-    ShiftSetN,
-
-    MulStart,
-    Mul,
-
-    SingleMoveAdd,
-    SingleMoveSub,
-
-    DoubleMoveAddAdd,
-    DoubleMoveAddSub,
-    DoubleMoveSubAdd,
-    DoubleMoveSubSub,
-
-    MoveStart,
-    MoveAdd,
-    MoveSub,
-
-    In,
-    Out,
-
-    JmpIfZero, // LoopStart
-    JmpIfNotZero, // LoopEnd
-    PositiveRangeCheckJNZ, // LoopEndWithOffset
-    NegativeRangeCheckJNZ,
-
-    End,
-}
-
-impl Debug for Bytecode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (delta2, val2, val3) = u32_to_delta_and_two_val(self.addr);
-        let (d1, d2) = u32_to_two_delta(self.addr);
-        let op = match self.opcode {
-            OpCode::Breakpoint => format!("brk"),
-
-            OpCode::SingleAdd => format!("add {}", self.val),
-            OpCode::SingleSet => format!("set {}", self.val),
-            OpCode::AddAdd => format!("add {}, {} add {}", self.val, delta2, val2),
-            OpCode::AddSet => format!("add {}, {} set {}", self.val, delta2, val2),
-            OpCode::SetAdd => format!("set {}, {} add {}", self.val, delta2, val2),
-            OpCode::SetSet => format!("set {}, {} set {}", self.val, delta2, val2),
-
-            OpCode::ShiftP => format!("shift {}, prc {}", self.addr as i32, val3),
-            OpCode::ShiftN => format!("shift {}, nrc {}", self.addr as i32, val3),
-            OpCode::ShiftAddP => format!("shift {}, {} add {}, prc {}", self.val as i8, delta2, val2, val3),
-            OpCode::ShiftAddN => format!("shift {}, {} add {}, nrc {}", self.val as i8, delta2, val2, val3),
-            OpCode::ShiftSetP => format!("shift {}, {} set {}, prc {}", self.val as i8, delta2, val2, val3),
-            OpCode::ShiftSetN => format!("shift {}, {} set {}, nrc {}", self.val as i8, delta2, val2, val3),
-
-            OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
-            OpCode::Mul => format!("mul {}", self.val),
-
-            OpCode::SingleMoveAdd => format!("smadd {}", self.addr as i32),
-            OpCode::SingleMoveSub => format!("smsub {}", self.addr as i32),
-            
-            OpCode::DoubleMoveAddAdd => format!("dmaa {} {}", d1, d2),
-            OpCode::DoubleMoveAddSub => format!("dmas {} {}", d1, d2),
-            OpCode::DoubleMoveSubAdd => format!("dmsa {} {}", d1, d2),
-            OpCode::DoubleMoveSubSub => format!("dmss {} {}", d1, d2),
-
-            OpCode::MoveStart => format!("mvstart or jmp {}", self.addr as i32),
-            OpCode::MoveAdd => format!("madd"),
-            OpCode::MoveSub => format!("msub"),
-
-            OpCode::In => format!("in"),
-            OpCode::Out => format!("out"),
-
-            OpCode::JmpIfZero => format!("jpz {}", self.addr),
-            OpCode::JmpIfNotZero => format!("jpnz {}", self.addr),
-            OpCode::PositiveRangeCheckJNZ => format!("prc {}, jpnz {}", self.val as i8, self.addr),
-            OpCode::NegativeRangeCheckJNZ => format!("nrc {}, jpnz {}", self.val as i8, self.addr),
-
-            OpCode::End => format!("end"),
-        };
-
-        f.write_str(&format!("{} {}", self.delta, op))
-    }
 }
 
 pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<NewBytecode>, String> {
@@ -278,12 +174,10 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Ne
                                 if *is_pos {
                                     bytecodes.push(NewBytecode::MoveAdd {
                                         delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                                        to: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
                                     });
                                 } else {
                                     bytecodes.push(NewBytecode::MoveSub {
                                         delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                                        to: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
                                     });
                                 }
                             }
