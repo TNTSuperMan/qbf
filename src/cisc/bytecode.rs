@@ -243,7 +243,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Ne
                         } else {
                             return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
                         }
-                        let subrel = end - start + 1;
+                        let subrel = end - start - 1;
                         match range {
                             MemoryRange::None => bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 }),
                             MemoryRange::Positive(r) => bytecodes.push(NewBytecode::PositiveRangeCheckJNZ { delta, addr_subrel: subrel as u16, range: *r }),
