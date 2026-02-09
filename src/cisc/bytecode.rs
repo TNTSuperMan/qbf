@@ -234,25 +234,22 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Ne
                         bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
-                        return Err("unimplemented".to_owned());
-                        /*let (range_sign, range) = range_info.map.get(&i).unwrap();
-                        if let Ok(range_i8) = i8::try_from(*range as i16) {
-                            let start = loop_stack.pop().unwrap();
-                            let end = bytecodes.len();
-                            last_ptr -= offset;
-                            if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
-                                *addr = (end + 1) as u32;
-                            } else {
-                                return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
-                            }
-                            let bc = match range_sign {
-                                Sign::Positive => NewBytecode::PositiveRangeCheckJNZ { delta, val: range_i8 as u8, addr: (start + 1) as u32 },
-                                Sign::Negative => NewBytecode::NegativeRangeCheckJNZ { delta, val: range_i8 as u8, addr: (start + 1) as u32 },
-                            };
-                            bytecodes.push(bc);
+                        let range = range_info.map.get(&i).unwrap();
+                        let start = loop_stack.pop().unwrap();
+                        let end = bytecodes.len();
+                        last_ptr -= offset;
+                        if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
+                            *addr = (end + 1) as u32;
                         } else {
-                            return Err("OptimizationError: Pointer Range Overflow".to_owned())
-                        }*/
+                            return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
+                        }
+                        let subrel = end - start + 1;
+                        match range {
+                            MemoryRange::None => bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 }),
+                            MemoryRange::Positive(r) => bytecodes.push(NewBytecode::PositiveRangeCheckJNZ { delta, addr_subrel: subrel as u16, range: *r }),
+                            MemoryRange::Negative(r) => bytecodes.push(NewBytecode::NegativeRangeCheckJNZ { delta, addr_subrel: subrel as u16, range: *r }),
+                            MemoryRange::Both { positive, negative } => bytecodes.push(NewBytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr_subrel: subrel as u16, positive: *positive, negative: *negative }),
+                        }
                     }
 
                     IROp::End => {
