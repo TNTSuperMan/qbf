@@ -2,9 +2,11 @@ use std::{cmp::{max, min}, collections::HashMap};
 
 use crate::ir::{IR, IROp};
 
+#[inline(always)]
 pub fn positive_is_out_of_range(range: u16, pointer: usize) -> bool {
     pointer >= (range as usize)
 }
+#[inline(always)]
 pub fn negative_is_out_of_range(range: u16, pointer: usize) -> bool {
     pointer < (range as usize)
 }
