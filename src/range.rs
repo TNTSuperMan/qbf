@@ -17,12 +17,14 @@ impl Sign {
     }
 }
 
+#[derive(Debug)]
 struct RSMapElement {
     sign: Sign,
     pointer: isize,
     positive: isize,
     negative: isize,
 }
+#[derive(Debug)]
 struct InternalRangeState {
     map: HashMap<usize, RSMapElement>,
     curr_positive: isize,
