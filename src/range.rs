@@ -17,8 +17,14 @@ impl Sign {
     }
 }
 
+struct RSMapElement {
+    sign: Sign,
+    pointer: isize,
+    positive: isize,
+    negative: isize,
+}
 struct InternalRangeState {
-    map: HashMap<usize, (Sign, isize, isize)>,
+    map: HashMap<usize, RSMapElement>,
     curr_positive: isize,
     curr_negative: isize,
 }
@@ -35,23 +41,18 @@ impl InternalRangeState {
         self.curr_negative = min(self.curr_negative, pointer);
     }
     pub fn insert(&mut self, ir_at: usize, sign: Sign, pointer: isize) {
-        self.map.insert(ir_at, (sign, pointer, match sign {
-            Sign::Positive => self.curr_positive,
-            Sign::Negative => self.curr_negative,
-        }));
+        self.map.insert(ir_at, RSMapElement {
+            sign, pointer,
+            positive: self.curr_positive,
+            negative: self.curr_negative
+        });
         self.curr_positive = pointer;
         self.curr_negative = pointer;
     }
     pub fn apply_loop(&mut self, ir_at: usize) {
         let ri = self.map.get_mut(&ir_at).unwrap();
-        match &ri.0 {
-            Sign::Positive => {
-                ri.2 = max(ri.2, self.curr_positive);
-            }
-            Sign::Negative => {
-                ri.2 = min(ri.2, self.curr_negative);
-            }
-        }
+        ri.positive = max(ri.positive, self.curr_positive);
+        ri.negative = min(ri.negative, self.curr_negative);
     }
 }
 
@@ -61,8 +62,9 @@ pub struct RangeInfo {
 }
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, r))| {
-            if let Ok(ri16) = i16::try_from(ptr - r) {
+        let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { sign, pointer, positive, negative })| {
+            unimplemented!();
+            if let Ok(ri16) = i16::try_from(pointer - positive) {
                 match sign {
                     Sign::Positive => Ok((ir_at, (sign, ri16.wrapping_sub(1) as u16))),
                     Sign::Negative => Ok((ir_at, (sign, ri16 as u16))),
