@@ -2,24 +2,8 @@ use std::{cmp::{max, min}, collections::HashMap};
 
 use crate::ir::{IR, IROp};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Sign {
-    Positive,
-    Negative,
-}
-impl Sign {
-    pub fn isize_to_sign(num: isize) -> Sign {
-        if num >= 0 {
-            Sign::Positive
-        } else {
-            Sign::Negative
-        }
-    }
-}
-
 #[derive(Debug)]
 struct RSMapElement {
-    sign: Sign,
     pointer: isize,
     positive: isize,
     negative: isize,
@@ -42,9 +26,9 @@ impl InternalRangeState {
         self.curr_positive = max(self.curr_positive, pointer);
         self.curr_negative = min(self.curr_negative, pointer);
     }
-    pub fn insert(&mut self, ir_at: usize, sign: Sign, pointer: isize) {
+    pub fn insert(&mut self, ir_at: usize, pointer: isize) {
         self.map.insert(ir_at, RSMapElement {
-            sign, pointer,
+            pointer,
             positive: self.curr_positive,
             negative: self.curr_negative
         });
@@ -70,7 +54,7 @@ pub struct RangeInfo {
 }
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { sign, pointer, positive, negative })| {
+        let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, positive, negative })| {
             let posr_raw = 65536 - (positive - pointer);
             let negr_raw = -(negative - pointer);
 
@@ -106,8 +90,8 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
         internal_ri.subscribe(*pointer);
         match opcode {
-            IROp::Shift(step) => {
-                internal_ri.insert(i, Sign::isize_to_sign(*step), *pointer);
+            IROp::Shift(_step) => {
+                internal_ri.insert(i, *pointer);
             }
             IROp::MulAndSetZero(dests) => {
                 for (ptr, _val) in dests {
@@ -130,8 +114,8 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
                     internal_ri.apply_loop(*end);
                 }
             }
-            IROp::LoopEndWithOffset(_start, offset) => {
-                internal_ri.insert(i, Sign::isize_to_sign(*offset), *pointer);
+            IROp::LoopEndWithOffset(_start, _offset) => {
+                internal_ri.insert(i, *pointer);
             }
             _ => {}
         }
