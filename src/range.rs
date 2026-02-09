@@ -1,82 +1,87 @@
-use std::collections::HashMap;
+use std::{cmp::{max, min}, collections::HashMap};
 
 use crate::ir::{IR, IROp};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Sign {
-    Positive,
-    Negative,
+pub fn positive_is_out_of_range(range: u16, pointer: usize) -> bool {
+    pointer >= (range as usize)
 }
-impl Sign {
-    pub fn isize_to_sign(num: isize) -> Sign {
-        if num >= 0 {
-            Sign::Positive
-        } else {
-            Sign::Negative
-        }
-    }
+pub fn negative_is_out_of_range(range: u16, pointer: usize) -> bool {
+    pointer < (range as usize)
 }
 
-struct InternalRangeInfo {
-    map: HashMap<usize, (Sign, isize, isize)>,
+#[derive(Debug)]
+struct RSMapElement {
+    pointer: isize,
+    positive: isize,
+    negative: isize,
+}
+#[derive(Debug)]
+struct InternalRangeState {
+    map: HashMap<usize, RSMapElement>,
     curr_positive: isize,
     curr_negative: isize,
 }
-impl InternalRangeInfo {
-    pub fn new() -> InternalRangeInfo {
-        InternalRangeInfo {
+impl InternalRangeState {
+    pub fn new() -> InternalRangeState {
+        InternalRangeState {
             map: HashMap::new(),
             curr_positive: isize::MIN,
             curr_negative: isize::MAX,
         }
     }
     pub fn subscribe(&mut self, pointer: isize) {
-        if self.curr_negative > pointer {
-            self.curr_negative = pointer;
-        }
-        if self.curr_positive < pointer {
-            self.curr_positive = pointer;
-        }
+        self.curr_positive = max(self.curr_positive, pointer);
+        self.curr_negative = min(self.curr_negative, pointer);
     }
-    pub fn insert(&mut self, ir_at: usize, sign: Sign, pointer: isize) {
-        self.map.insert(ir_at, (sign, pointer, match sign {
-            Sign::Positive => self.curr_positive,
-            Sign::Negative => self.curr_negative,
-        }));
+    pub fn insert(&mut self, ir_at: usize, pointer: isize) {
+        self.map.insert(ir_at, RSMapElement {
+            pointer,
+            positive: self.curr_positive,
+            negative: self.curr_negative
+        });
         self.curr_positive = pointer;
         self.curr_negative = pointer;
     }
     pub fn apply_loop(&mut self, ir_at: usize) {
         let ri = self.map.get_mut(&ir_at).unwrap();
-        match &ri.0 {
-            Sign::Positive => {
-                if ri.2 < self.curr_positive {
-                    ri.2 = self.curr_positive;
-                }
-            }
-            Sign::Negative => {
-                if ri.2 > self.curr_negative {
-                    ri.2 = self.curr_negative;
-                }
-            }
-        }
+        ri.positive = max(ri.positive, self.curr_positive);
+        ri.negative = min(ri.negative, self.curr_negative);
     }
 }
 
+pub enum MemoryRange {
+    None,
+    Positive(u16), // deopt when ptr >= X
+    Negative(u16), // deopt when ptr < X
+    Both { positive: u16, negative: u16 },
+}
 pub struct RangeInfo {
-    pub map: HashMap<usize, (Sign, u16)>,
+    pub map: HashMap<usize, MemoryRange>,
     pub do_opt_first: bool,
 }
 impl RangeInfo {
-    fn from(internal_ri: &InternalRangeInfo) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, r))| {
-            if let Ok(ri16) = i16::try_from(ptr - r) {
-                match sign {
-                    Sign::Positive => Ok((ir_at, (sign, ri16.wrapping_sub(1) as u16))),
-                    Sign::Negative => Ok((ir_at, (sign, ri16 as u16))),
+    fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
+        let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, positive, negative })| {
+            let posr_raw = 65536 - (positive - pointer);
+            let negr_raw = -(negative - pointer);
+
+            match (pointer == positive, pointer == negative) {
+                (false, false) => {
+                    let posr_val = u16::try_from(posr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let negr_val = u16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MemoryRange::Both { positive: posr_val, negative: negr_val }))
                 }
-            } else {
-                Err("OptimizationError: Pointer Range Overflow".to_owned())
+                (false, true) => {
+                    let posr_val = u16::try_from(posr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MemoryRange::Positive(posr_val)))
+                }
+                (true, false) => {
+                    let negr_val = u16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MemoryRange::Negative(negr_val)))
+                }
+                (true, true) => {
+                    Ok((ir_at, MemoryRange::None))
+                }
             }
         }).collect();
         Ok(RangeInfo {
@@ -87,13 +92,13 @@ impl RangeInfo {
 }
 
 pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
-    let mut internal_ri = InternalRangeInfo::new();
+    let mut internal_ri = InternalRangeState::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
         internal_ri.subscribe(*pointer);
         match opcode {
-            IROp::Shift(step) => {
-                internal_ri.insert(i, Sign::isize_to_sign(*step), *pointer);
+            IROp::Shift(_step) => {
+                internal_ri.insert(i, *pointer);
             }
             IROp::MulAndSetZero(dests) => {
                 for (ptr, _val) in dests {
@@ -116,8 +121,8 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
                     internal_ri.apply_loop(*end);
                 }
             }
-            IROp::LoopEndWithOffset(_start, offset) => {
-                internal_ri.insert(i, Sign::isize_to_sign(*offset), *pointer);
+            IROp::LoopEndWithOffset(_start, _offset) => {
+                internal_ri.insert(i, *pointer);
             }
             _ => {}
         }
