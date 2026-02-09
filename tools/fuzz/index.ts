@@ -1,8 +1,4 @@
-import { $, file, sleep, spawn } from "bun";
-
-if ((await $`cargo build --release --features=trace`).exitCode != 0) {
-    process.exit();
-}
+import { env, file, sleep, spawn } from "bun";
 
 function execute(code: string, countMax: number): boolean {
     let pc = 0;
@@ -62,18 +58,25 @@ function GenerateRandomBFCode(min: number, max: number): string {
     while ((code = _randombf(max)).length < min);
     return code;
 }
+const QBF_FILE = `target/${env.QBF_MODE ?? "debug"}/qbf`;
 const TEMP_BF = "./box/bf/temp.bf";
 const tmp = file(TEMP_BF);
-for(;;) {
+while (true) {
     const code = GenerateRandomBFCode(100, 1000);
     if (execute(code, 100000)) {
         await tmp.write(code);
-        const p = spawn({
-            cmd: ["target/release/qbf", TEMP_BF],
+        const qbf_process = spawn({
+            cmd: [QBF_FILE, TEMP_BF],
         });
-        if ((await p.exited) != 0) {
-            process.exit();
+        switch (await Promise.race([qbf_process.exited, sleep(1000)])) {
+            case undefined:
+                qbf_process.kill();
+                console.error("Timeout");
+                process.exit();
+            case 0: // Expected behavior in fuzzing
+                break;
+            default: // Case of panic
+                process.exit();
         }
     }
-    await sleep(100);
 }
