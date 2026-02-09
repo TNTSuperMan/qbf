@@ -45,8 +45,8 @@ impl InternalRangeState {
 pub enum MemoryRange {
     None,
     Positive(u16), // deopt when ptr >= X
-    Negative(i16), // deopt when ptr < X
-    Both { positive: u16, negative: i16 },
+    Negative(u16), // deopt when ptr < X
+    Both { positive: u16, negative: u16 },
 }
 pub struct RangeInfo {
     pub map: HashMap<usize, MemoryRange>,
@@ -61,7 +61,7 @@ impl RangeInfo {
             match (pointer == positive, pointer == negative) {
                 (false, false) => {
                     let posr_val = u16::try_from(posr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
-                    let negr_val = i16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let negr_val = u16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
                     Ok((ir_at, MemoryRange::Both { positive: posr_val, negative: negr_val }))
                 }
                 (false, true) => {
@@ -69,7 +69,7 @@ impl RangeInfo {
                     Ok((ir_at, MemoryRange::Positive(posr_val)))
                 }
                 (true, false) => {
-                    let negr_val = i16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let negr_val = u16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
                     Ok((ir_at, MemoryRange::Negative(negr_val)))
                 }
                 (true, true) => {
