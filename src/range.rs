@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cmp::{max, min}, collections::HashMap};
 
 use crate::ir::{IR, IROp};
 
@@ -31,12 +31,8 @@ impl InternalRangeState {
         }
     }
     pub fn subscribe(&mut self, pointer: isize) {
-        if self.curr_negative > pointer {
-            self.curr_negative = pointer;
-        }
-        if self.curr_positive < pointer {
-            self.curr_positive = pointer;
-        }
+        self.curr_positive = max(self.curr_positive, pointer);
+        self.curr_negative = min(self.curr_negative, pointer);
     }
     pub fn insert(&mut self, ir_at: usize, sign: Sign, pointer: isize) {
         self.map.insert(ir_at, (sign, pointer, match sign {
@@ -50,14 +46,10 @@ impl InternalRangeState {
         let ri = self.map.get_mut(&ir_at).unwrap();
         match &ri.0 {
             Sign::Positive => {
-                if ri.2 < self.curr_positive {
-                    ri.2 = self.curr_positive;
-                }
+                ri.2 = max(ri.2, self.curr_positive);
             }
             Sign::Negative => {
-                if ri.2 > self.curr_negative {
-                    ri.2 = self.curr_negative;
-                }
+                ri.2 = min(ri.2, self.curr_negative);
             }
         }
     }
