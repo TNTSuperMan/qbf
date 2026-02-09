@@ -2,6 +2,13 @@ use std::{cmp::{max, min}, collections::HashMap};
 
 use crate::ir::{IR, IROp};
 
+pub fn positive_is_out_of_range(range: u16, pointer: usize) -> bool {
+    pointer >= (range as usize)
+}
+pub fn negative_is_out_of_range(range: u16, pointer: usize) -> bool {
+    pointer < (range as usize)
+}
+
 #[derive(Debug)]
 struct RSMapElement {
     pointer: isize,
