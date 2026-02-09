@@ -58,7 +58,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
 
             NewBytecode::BothRangeCheck { positive, negative } => {
-                if !positive_is_out_of_range(positive, vm.pointer) && negative_is_out_of_range(negative, vm.pointer) {
+                if !positive_is_out_of_range(positive, vm.pointer) && !negative_is_out_of_range(negative, vm.pointer) {
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
