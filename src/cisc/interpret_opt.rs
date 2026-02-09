@@ -1,6 +1,7 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::cisc::{bytecode::NewBytecode, internal::{InterpreterResult, Tier, negative_out_of_range, positive_out_of_range}, vm::VM};
+use crate::cisc::{bytecode::NewBytecode, internal::{InterpreterResult, Tier}, vm::VM};
+use crate::range::{negative_is_out_of_range, positive_is_out_of_range};
 
 pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
@@ -57,12 +58,24 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.memory.set_unchecked(vm.pointer, val2);
             }
 
+            NewBytecode::BothRangeCheck { positive, negative } => {
+                if positive_is_out_of_range(positive, vm.pointer) || negative_is_out_of_range(negative, vm.pointer) {
+                    vm.pc += 1;
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
+                }
+            }
+            NewBytecode::Shift { delta, step } => {
+                vm.step_ptr(delta as isize);
+                while vm.memory.get(vm.pointer)? != 0 {
+                    vm.step_ptr(step as isize);
+                }
+            }
             NewBytecode::ShiftP { delta, step, range } => {
                 vm.step_ptr(delta as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if positive_out_of_range(range as u8, vm.pointer) {
+                if positive_is_out_of_range(range, vm.pointer) {
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -72,17 +85,25 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if negative_out_of_range(range as u8, vm.pointer) {
+                if negative_is_out_of_range(range, vm.pointer) {
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
+            }
+            NewBytecode::ShiftAdd { delta1, step, delta2, val } => {
+                vm.step_ptr(delta1 as isize);
+                while vm.memory.get(vm.pointer)? != 0 {
+                    vm.step_ptr(step as isize);
+                }
+                vm.step_ptr(delta2 as isize);
+                vm.memory.add_unchecked(vm.pointer, val);
             }
             NewBytecode::ShiftAddP { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if positive_out_of_range(range as u8, vm.pointer) {
+                if positive_is_out_of_range(range, vm.pointer) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.add(vm.pointer, val)?;
                     vm.pc += 1;
@@ -96,7 +117,7 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !negative_out_of_range(range as u8, vm.pointer) {
+                if negative_is_out_of_range(range, vm.pointer) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.add(vm.pointer, val)?;
                     vm.pc += 1;
@@ -105,12 +126,20 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta2 as isize);
                 vm.memory.add_unchecked(vm.pointer, val);
             }
+            NewBytecode::ShiftSet { delta1, step, delta2, val } => {
+                vm.step_ptr(delta1 as isize);
+                while vm.memory.get(vm.pointer)? != 0 {
+                    vm.step_ptr(step as isize);
+                }
+                vm.step_ptr(delta2 as isize);
+                vm.memory.set_unchecked(vm.pointer, val);
+            }
             NewBytecode::ShiftSetP { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !positive_out_of_range(range as u8, vm.pointer) {
+                if positive_is_out_of_range(range, vm.pointer) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.set(vm.pointer, val)?;
                     vm.pc += 1;
@@ -124,7 +153,7 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if negative_out_of_range(range as u8, vm.pointer) {
+                if negative_is_out_of_range(range, vm.pointer) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.set(vm.pointer, val)?;
                     vm.pc += 1;
@@ -233,33 +262,48 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     continue;
                 }
             }
-            NewBytecode::PositiveRangeCheckJNZ { delta, val, addr } => {
+            NewBytecode::PositiveRangeCheckJNZ { delta, addr_subrel, range } => {
                 vm.step_ptr(delta as isize);
-                if positive_out_of_range(val as u8, vm.pointer) {
+                if positive_is_out_of_range(range, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc = addr as usize;
+                        vm.pc -= addr_subrel as usize;
                     } else {
                         vm.pc += 1;
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.memory.get_unchecked(vm.pointer) != 0 {
-                    vm.pc = addr as usize;
+                    vm.pc -= addr_subrel as usize;
                     continue;
                 }
             }
-            NewBytecode::NegativeRangeCheckJNZ { delta, val, addr } => {
+            NewBytecode::NegativeRangeCheckJNZ { delta, addr_subrel, range } => {
                 vm.step_ptr(delta as isize);
-                if negative_out_of_range(val as u8, vm.pointer) {
+                if negative_is_out_of_range(range, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc = addr as usize;
+                        vm.pc -= addr_subrel as usize;
                     } else {
                         vm.pc += 1;
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.memory.get_unchecked(vm.pointer) != 0 {
-                    vm.pc = addr as usize;
+                    vm.pc -= addr_subrel as usize;
+                    continue;
+                }
+            }
+            NewBytecode::BothRangeCheckJNZ { delta, addr_subrel, positive, negative } => {
+                vm.step_ptr(delta as isize);
+                if positive_is_out_of_range(positive, vm.pointer) || negative_is_out_of_range(negative, vm.pointer) {
+                    if vm.memory.get(vm.pointer)? != 0 {
+                        vm.pc -= addr_subrel as usize;
+                    } else {
+                        vm.pc += 1;
+                    }
+                    return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
+                }
+                if vm.memory.get_unchecked(vm.pointer) != 0 {
+                    vm.pc -= addr_subrel as usize;
                     continue;
                 }
             }
