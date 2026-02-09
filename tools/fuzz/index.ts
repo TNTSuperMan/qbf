@@ -1,6 +1,11 @@
 import { env, file, sleep, spawn } from "bun";
 import { execute } from "../exec/core";
 
+const MAX_STEPS = 1000;
+const TIMEOUT_MS = 100;
+const INPUT_MINLEN = 100;
+const INPUT_MAXLEN = 500;
+
 function _randombf(max: number) {
     let lv = 0;
     let code = "";
@@ -30,14 +35,14 @@ const QBF_FILE = `target/${env.QBF_MODE ?? "debug"}/qbf`;
 const TEMP_BF = "./box/bf/temp.bf";
 const tmp = file(TEMP_BF);
 while (true) {
-    const code = GenerateRandomBFCode(100, 1000);
-    const exec_result = execute({ code, timeout_cycles: 100_000 });
+    const code = GenerateRandomBFCode(INPUT_MINLEN, INPUT_MAXLEN);
+    const exec_result = execute({ code, timeout_cycles: MAX_STEPS });
     if (exec_result.type !== "timeout") {
         await tmp.write(code);
         const qbf_process = spawn({
             cmd: [QBF_FILE, TEMP_BF],
         });
-        switch (await Promise.race([qbf_process.exited, sleep(1000)])) {
+        switch (await Promise.race([qbf_process.exited, sleep(TIMEOUT_MS)])) {
             case undefined:
                 qbf_process.kill();
                 console.error("Timeout");
