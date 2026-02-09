@@ -1,113 +1,55 @@
 use std::fmt::Debug;
 
-use crate::{cisc::internal::{u32_to_delta_and_two_val, u32_to_two_delta}, ir::{IR, IROp}, range::{RangeInfo, Sign}};
+use crate::{ir::{IR, IROp}, range::{RangeInfo, Sign}};
 
-#[derive(Clone, Copy)]
-pub struct Bytecode {
-    pub opcode: OpCode,
-    pub delta: i16,
-    pub val: u8,
-    pub addr: u32,
+// メモ: jz ゼロ時ジャンプ jnz 非ゼロ時ジャンプ
+
+#[derive(Clone, Copy, Debug)]
+pub enum NewBytecode {
+    Breakpoint { delta: i16 },
+
+    SingleAdd { delta: i16, val: u8 },
+    SingleSet { delta: i16, val: u8 },
+    AddAdd { delta1: i16, val1: u8, delta2: i16, val2: u8 },
+    AddSet { delta1: i16, val1: u8, delta2: i16, val2: u8 },
+    SetAdd { delta1: i16, val1: u8, delta2: i16, val2: u8 },
+    SetSet { delta1: i16, val1: u8, delta2: i16, val2: u8 },
+
+    ShiftP { delta: i16, step: i16, range: u16 },
+    ShiftN { delta: i16, step: i16, range: u16 },
+    ShiftAddP { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
+    ShiftAddN { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
+    ShiftSetP { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
+    ShiftSetN { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
+
+    MulStart { delta: i16, jz: u32 },
+    Mul { delta: i16, val: u8 },
+
+    SingleMoveAdd { delta: i16, to: i16 },
+    SingleMoveSub { delta: i16, to: i16 },
+
+    DoubleMoveAddAdd { delta: i16, to1: i16, to2: i16 },
+    DoubleMoveAddSub { delta: i16, to1: i16, to2: i16 },
+    DoubleMoveSubAdd { delta: i16, to1: i16, to2: i16 },
+    DoubleMoveSubSub { delta: i16, to1: i16, to2: i16 },
+
+    MoveStart { delta: i16, jz: u32 },
+    MoveAdd { delta: i16 },
+    MoveSub { delta: i16 },
+
+    In { delta: i16 },
+    Out { delta: i16 },
+
+    JmpIfZero { delta: i16, addr: u32 },
+    JmpIfNotZero { delta: i16, addr: u32 },
+    PositiveRangeCheckJNZ { delta: i16, val: u8, addr: u32 },
+    NegativeRangeCheckJNZ { delta: i16, val: u8, addr: u32 },
+
+    End { delta: i16 },
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u8)]
-pub enum OpCode {
-    Breakpoint,
-
-    SingleAdd,
-    SingleSet,
-    AddAdd,
-    AddSet,
-    SetAdd,
-    SetSet,
-
-    ShiftP,
-    ShiftN,
-    ShiftAddP,
-    ShiftAddN,
-    ShiftSetP,
-    ShiftSetN,
-
-    MulStart,
-    Mul,
-
-    SingleMoveAdd,
-    SingleMoveSub,
-
-    DoubleMoveAddAdd,
-    DoubleMoveAddSub,
-    DoubleMoveSubAdd,
-    DoubleMoveSubSub,
-
-    MoveStart,
-    MoveAdd,
-    MoveSub,
-
-    In,
-    Out,
-
-    JmpIfZero, // LoopStart
-    JmpIfNotZero, // LoopEnd
-    PositiveRangeCheckJNZ, // LoopEndWithOffset
-    NegativeRangeCheckJNZ,
-
-    End,
-}
-
-impl Debug for Bytecode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (delta2, val2, val3) = u32_to_delta_and_two_val(self.addr);
-        let (d1, d2) = u32_to_two_delta(self.addr);
-        let op = match self.opcode {
-            OpCode::Breakpoint => format!("brk"),
-
-            OpCode::SingleAdd => format!("add {}", self.val),
-            OpCode::SingleSet => format!("set {}", self.val),
-            OpCode::AddAdd => format!("add {}, {} add {}", self.val, delta2, val2),
-            OpCode::AddSet => format!("add {}, {} set {}", self.val, delta2, val2),
-            OpCode::SetAdd => format!("set {}, {} add {}", self.val, delta2, val2),
-            OpCode::SetSet => format!("set {}, {} set {}", self.val, delta2, val2),
-
-            OpCode::ShiftP => format!("shift {}, prc {}", self.addr as i32, val3),
-            OpCode::ShiftN => format!("shift {}, nrc {}", self.addr as i32, val3),
-            OpCode::ShiftAddP => format!("shift {}, {} add {}, prc {}", self.val as i8, delta2, val2, val3),
-            OpCode::ShiftAddN => format!("shift {}, {} add {}, nrc {}", self.val as i8, delta2, val2, val3),
-            OpCode::ShiftSetP => format!("shift {}, {} set {}, prc {}", self.val as i8, delta2, val2, val3),
-            OpCode::ShiftSetN => format!("shift {}, {} set {}, nrc {}", self.val as i8, delta2, val2, val3),
-
-            OpCode::MulStart => format!("mulstart or jmp {}", self.addr),
-            OpCode::Mul => format!("mul {}", self.val),
-
-            OpCode::SingleMoveAdd => format!("smadd {}", self.addr as i32),
-            OpCode::SingleMoveSub => format!("smsub {}", self.addr as i32),
-            
-            OpCode::DoubleMoveAddAdd => format!("dmaa {} {}", d1, d2),
-            OpCode::DoubleMoveAddSub => format!("dmas {} {}", d1, d2),
-            OpCode::DoubleMoveSubAdd => format!("dmsa {} {}", d1, d2),
-            OpCode::DoubleMoveSubSub => format!("dmss {} {}", d1, d2),
-
-            OpCode::MoveStart => format!("mvstart or jmp {}", self.addr as i32),
-            OpCode::MoveAdd => format!("madd"),
-            OpCode::MoveSub => format!("msub"),
-
-            OpCode::In => format!("in"),
-            OpCode::Out => format!("out"),
-
-            OpCode::JmpIfZero => format!("jpz {}", self.addr),
-            OpCode::JmpIfNotZero => format!("jpnz {}", self.addr),
-            OpCode::PositiveRangeCheckJNZ => format!("prc {}, jpnz {}", self.val as i8, self.addr),
-            OpCode::NegativeRangeCheckJNZ => format!("nrc {}, jpnz {}", self.val as i8, self.addr),
-
-            OpCode::End => format!("end"),
-        };
-
-        f.write_str(&format!("{} {}", self.delta, op))
-    }
-}
-
-pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Bytecode>, String> {
-    let mut bytecodes: Vec<Bytecode> = vec![];
+pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<NewBytecode>, String> {
+    let mut bytecodes: Vec<NewBytecode> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
 
     let mut i = 0usize;
@@ -124,12 +66,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                 last_ptr = node.pointer;
                 match &node.opcode {
                     IROp::Breakpoint => {
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::Breakpoint,
-                            delta,
-                            val: 0,
-                            addr: 0,
-                        });
+                        bytecodes.push(NewBytecode::Breakpoint { delta });
                     }
 
                     IROp::Add(val1) => {
@@ -137,34 +74,19 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                 last_ptr = ptr2;
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::AddAdd,
-                                    delta,
-                                    val: *val1,
-                                    addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
-                                });
+                                bytecodes.push(NewBytecode::AddAdd { delta1: delta, val1: *val1, delta2, val2 });
                                 i += 2;
                                 continue;
                             }
                             IR { opcode: IROp::Set(val2), pointer: ptr2 } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                 last_ptr = ptr2;
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::AddSet,
-                                    delta,
-                                    val: *val1,
-                                    addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
-                                });
+                                bytecodes.push(NewBytecode::AddSet { delta1: delta, val1: *val1, delta2, val2 });
                                 i += 2;
                                 continue;
                             }
                             _ => {
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::SingleAdd,
-                                    delta,
-                                    val: *val1,
-                                    addr: 0,
-                                });
+                                bytecodes.push(NewBytecode::SingleAdd { delta, val: *val1 });
                             }
                         }
                     }
@@ -173,34 +95,19 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                 last_ptr = ptr2;
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::SetAdd,
-                                    delta,
-                                    val: *val1,
-                                    addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
-                                });
+                                bytecodes.push(NewBytecode::SetAdd { delta1: delta, val1: *val1, delta2, val2 });
                                 i += 2;
                                 continue;
                             }
                             IR { opcode: IROp::Set(val2), pointer: ptr2 } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                 last_ptr = ptr2;
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::SetSet,
-                                    delta,
-                                    val: *val1,
-                                    addr: (delta2 as u16 as u32) | ((val2 as u32) << 16),
-                                });
+                                bytecodes.push(NewBytecode::SetSet { delta1: delta, val1: *val1, delta2, val2 });
                                 i += 2;
                                 continue;
                             }
                             _ => {
-                                bytecodes.push(Bytecode {
-                                    opcode: OpCode::SingleSet,
-                                    delta,
-                                    val: *val1,
-                                    addr: 0,
-                                });
+                                bytecodes.push(NewBytecode::SingleSet { delta, val: *val1 });
                             }
                         }
                     }
@@ -211,65 +118,40 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         if let Ok(step_i8) = i8::try_from(*step) {
                             match ir_nodes[i + 1] {
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
-                                    let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
+                                    let delta2 = i8::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
-                                    bytecodes.push(Bytecode {
-                                        opcode: match range_sign {
-                                            Sign::Positive => OpCode::ShiftAddP,
-                                            Sign::Negative => OpCode::ShiftAddN,
-                                        },
-                                        delta,
-                                        val: step_i8 as u8,
-                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16) | ((range_i8 as u8 as u32) << 24),
-                                    });
+                                    match range_sign {
+                                        Sign::Positive => bytecodes.push(NewBytecode::ShiftAddP { delta1: delta, step: step_i8, delta2, val, range: range_i8 as i16 as u16 }),
+                                        Sign::Negative => bytecodes.push(NewBytecode::ShiftAddN { delta1: delta, step: step_i8, delta2, val, range: range_i8 as i16 as u16 }),
+                                    };
                                     i += 2;
                                     continue;
                                 }
                                 IR { opcode: IROp::Set(val), pointer: ptr } => {
-                                    let delta2 = i16::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
+                                    let delta2 = i8::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
-                                    bytecodes.push(Bytecode {
-                                        opcode: match range_sign {
-                                            Sign::Positive => OpCode::ShiftSetP,
-                                            Sign::Negative => OpCode::ShiftSetN,
-                                        },
-                                        delta,
-                                        val: step_i8 as u8,
-                                        addr: (delta2 as u16 as u32) | ((val as u32) << 16) | ((range_i8 as u8 as u32) << 24),
-                                    });
+                                    match range_sign {
+                                        Sign::Positive => bytecodes.push(NewBytecode::ShiftSetP { delta1: delta, step: step_i8, delta2, val, range: range_i8 as i16 as u16 }),
+                                        Sign::Negative => bytecodes.push(NewBytecode::ShiftSetN { delta1: delta, step: step_i8, delta2, val, range: range_i8 as i16 as u16 }),
+                                    };
                                     i += 2;
                                     continue;
                                 }
                                 _ => { /* 下のフローで処理 */ }
                             }
                         }
-                        bytecodes.push(Bytecode {
-                            opcode: match range_sign {
-                                Sign::Positive => OpCode::ShiftP,
-                                Sign::Negative => OpCode::ShiftN,
-                            },
-                            delta,
-                            val: range_i8 as u8,
-                            addr: *step as i32 as u32,
-                        });
+                        match range_sign {
+                            Sign::Positive => bytecodes.push(NewBytecode::ShiftP { delta, step: *step as i16, range: range_i8 as i16 as u16 }),
+                            Sign::Negative => bytecodes.push(NewBytecode::ShiftN { delta, step: *step as i16, range: range_i8 as i16 as u16 }),
+                        };
                     }
                     IROp::MulAndSetZero(dests) => {
                         let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
 
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::MulStart,
-                            delta,
-                            val: 0,
-                            addr: skip_pc,
-                        });
+                        bytecodes.push(NewBytecode::MulStart { delta, jz: skip_pc });
 
                         for (dest_ptr, dest_val) in dests {
-                            bytecodes.push(Bytecode {
-                                opcode: OpCode::Mul,
-                                delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                                val: *dest_val,
-                                addr: 0,
-                            });
+                            bytecodes.push(NewBytecode::Mul { delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?, val: *dest_val });
                         }
                     }
                     IROp::MovesAndSetZero(dests) => {
@@ -277,101 +159,63 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             let delta1 = i16::try_from(p1.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                             let delta2 = i16::try_from(p2.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
 
-                            let opcode = match (*f1, *f2) {
-                                (true, true) =>   OpCode::DoubleMoveAddAdd,
-                                (true, false) =>  OpCode::DoubleMoveAddSub,
-                                (false, true) =>  OpCode::DoubleMoveSubAdd,
-                                (false, false) => OpCode::DoubleMoveSubSub,
+                            match (*f1, *f2) {
+                                (true, true) =>   bytecodes.push(NewBytecode::DoubleMoveAddAdd { delta, to1: delta1, to2: delta2 }),
+                                (true, false) =>  bytecodes.push(NewBytecode::DoubleMoveAddSub { delta, to1: delta1, to2: delta2 }),
+                                (false, true) =>  bytecodes.push(NewBytecode::DoubleMoveSubAdd { delta, to1: delta1, to2: delta2 }),
+                                (false, false) => bytecodes.push(NewBytecode::DoubleMoveSubSub { delta, to1: delta1, to2: delta2 }),
                             };
-
-                            bytecodes.push(Bytecode {
-                                opcode,
-                                delta,
-                                val: 0,
-                                addr: (delta1 as u16 as u32) | ((delta2 as u16 as u32) << 16),
-                            });
                         } else {
                             let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
 
-                            bytecodes.push(Bytecode {
-                                opcode: OpCode::MoveStart,
-                                delta,
-                                val: 0,
-                                addr: skip_pc,
-                            });
+                            bytecodes.push(NewBytecode::MoveStart { delta, jz: skip_pc });
 
                             for (dest_ptr, is_pos) in dests {
                                 if *is_pos {
-                                    bytecodes.push(Bytecode {
-                                        opcode: OpCode::MoveAdd,
+                                    bytecodes.push(NewBytecode::MoveAdd {
                                         delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                                        val: 0,
-                                        addr: 0,
                                     });
                                 } else {
-                                    bytecodes.push(Bytecode {
-                                        opcode: OpCode::MoveSub,
+                                    bytecodes.push(NewBytecode::MoveSub {
                                         delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                                        val: 0,
-                                        addr: 0,
                                     });
                                 }
                             }
                         }
                     }
                     IROp::MoveAdd(dest) => {
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::SingleMoveAdd,
+                        bytecodes.push(NewBytecode::SingleMoveAdd {
                             delta,
-                            val: 0,
-                            addr: i32::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")? as u32,
+                            to: i16::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
                         });
                     }
                     IROp::MoveSub(dest) => {
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::SingleMoveSub,
+                        bytecodes.push(NewBytecode::SingleMoveSub {
                             delta,
-                            val: 0,
-                            addr: i32::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")? as u32,
+                            to: i16::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
                         });
                     }
 
                     IROp::In => {
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::In,
-                            delta,
-                            val: 0,
-                            addr: 0,
-                        });
+                        bytecodes.push(NewBytecode::In { delta });
                     }
                     IROp::Out => {
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::Out,
-                            delta,
-                            val: 0,
-                            addr: 0,
-                        });
+                        bytecodes.push(NewBytecode::Out { delta });
                     }
 
                     IROp::LoopStart(_end) => {
                         loop_stack.push(bytecodes.len());
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::JmpIfZero,
-                            delta,
-                            val: 0,
-                            addr: u32::MAX,
-                        });
+                        bytecodes.push(NewBytecode::JmpIfZero { delta, addr: u32::MAX });
                     }
                     IROp::LoopEnd(_start) => {
                         let start = loop_stack.pop().unwrap();
                         let end = bytecodes.len();
-                        bytecodes[start].addr = (end + 1) as u32;
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::JmpIfNotZero,
-                            delta,
-                            val: 0,
-                            addr: (start + 1) as u32,
-                        });
+                        if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
+                            *addr = (end + 1) as u32;
+                        } else {
+                            return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
+                        }
+                        bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
                         let (range_sign, range) = range_info.map.get(&i).unwrap();
@@ -379,28 +223,23 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             let start = loop_stack.pop().unwrap();
                             let end = bytecodes.len();
                             last_ptr -= offset;
-                            bytecodes[start].addr = (end + 1) as u32;
-                            bytecodes.push(Bytecode {
-                                opcode: match range_sign {
-                                    Sign::Positive => OpCode::PositiveRangeCheckJNZ,
-                                    Sign::Negative => OpCode::NegativeRangeCheckJNZ,
-                                },
-                                delta,
-                                val: range_i8 as u8,
-                                addr: (start + 1) as u32,
-                            });
+                            if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
+                                *addr = (end + 1) as u32;
+                            } else {
+                                return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
+                            }
+                            let bc = match range_sign {
+                                Sign::Positive => NewBytecode::PositiveRangeCheckJNZ { delta, val: range_i8 as u8, addr: (start + 1) as u32 },
+                                Sign::Negative => NewBytecode::NegativeRangeCheckJNZ { delta, val: range_i8 as u8, addr: (start + 1) as u32 },
+                            };
+                            bytecodes.push(bc);
                         } else {
                             return Err("OptimizationError: Pointer Range Overflow".to_owned())
                         }
                     }
 
                     IROp::End => {
-                        bytecodes.push(Bytecode {
-                            opcode: OpCode::End,
-                            delta,
-                            val: 0,
-                            addr: 0
-                        });
+                        bytecodes.push(NewBytecode::End { delta });
                     }
                 }
             }
