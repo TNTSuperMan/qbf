@@ -58,21 +58,40 @@ impl InternalRangeState {
     }
 }
 
+pub enum MemoryRange {
+    None,
+    Positive(u16), // deopt when ptr >= X
+    Negative(i16), // deopt when ptr < X
+    Both { positive: u16, negative: i16 },
+}
 pub struct RangeInfo {
-    pub map: HashMap<usize, (Sign, u16)>,
+    pub map: HashMap<usize, MemoryRange>,
     pub do_opt_first: bool,
 }
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { sign, pointer, positive, negative })| {
-            unimplemented!();
-            if let Ok(ri16) = i16::try_from(pointer - positive) {
-                match sign {
-                    Sign::Positive => Ok((ir_at, (sign, ri16.wrapping_sub(1) as u16))),
-                    Sign::Negative => Ok((ir_at, (sign, ri16 as u16))),
+        let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { sign, pointer, positive, negative })| {
+            println!("{ir_at} {sign:?} ptr:{pointer},pos:{positive},neg:{negative} calc: pos:{}, neg:{}", positive - pointer, negative - pointer);
+            let posr_raw = 65536 - (positive - pointer);
+            let negr_raw = -(negative - pointer);
+
+            match (pointer == positive, pointer == negative) {
+                (false, false) => {
+                    let posr_val = u16::try_from(posr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let negr_val = i16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MemoryRange::Both { positive: posr_val, negative: negr_val }))
                 }
-            } else {
-                Err("OptimizationError: Pointer Range Overflow".to_owned())
+                (false, true) => {
+                    let posr_val = u16::try_from(posr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MemoryRange::Positive(posr_val)))
+                }
+                (true, false) => {
+                    let negr_val = i16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MemoryRange::Negative(negr_val)))
+                }
+                (true, true) => {
+                    Ok((ir_at, MemoryRange::None))
+                }
             }
         }).collect();
         Ok(RangeInfo {
