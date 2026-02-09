@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{fs, time::Instant};
 
 use crate::{cisc::run_cisc, ir::parse_to_ir, range::generate_range_info, risc::run_risc};
 use clap::Parser;
@@ -26,7 +26,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
     
-    match std::fs::read_to_string(args.file) {
+    match fs::read_to_string(args.file) {
         Err(e) => {
             eprintln!("File Error: {}", e);
         }
@@ -99,6 +99,8 @@ fn main() {
                         return;
                     }
                 };
+                #[cfg(feature = "debug")]
+                fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
 
                 if args.use_risc {
                     if let Err(msg) = run_risc(&ir) {
@@ -112,9 +114,6 @@ fn main() {
 
                 #[cfg(feature = "debug")] {
                     // use crate::ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
-                    use crate::{trace::generate_ir_trace};
-                    use std::fs;
-                    fs::write("./box/ir", generate_ir_trace(&ir, &range_info)).expect("failed to write");
                     /* let noend_ir = &ir[0..ir.len()-1];
                     let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
                     let one_round = inline_ssa_history(&raw);
