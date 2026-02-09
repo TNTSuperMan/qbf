@@ -13,6 +13,7 @@ pub fn generate_bytecode_trace(bytecodes: &[NewBytecode], ocm: &OperationCountMa
             NewBytecode::JmpIfNotZero { .. } => lv -= 1,
             NewBytecode::PositiveRangeCheckJNZ { .. } => lv -= 1,
             NewBytecode::NegativeRangeCheckJNZ { .. } => lv -= 1,
+            NewBytecode::BothRangeCheckJNZ { .. } => lv -= 1,
             _ => {}
         }
         str += &format!("{}:\t{}{:?}\n", (ocm.0[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
