@@ -71,7 +71,6 @@ pub struct RangeInfo {
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
         let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { sign, pointer, positive, negative })| {
-            println!("{ir_at} {sign:?} ptr:{pointer},pos:{positive},neg:{negative} calc: pos:{}, neg:{}", positive - pointer, negative - pointer);
             let posr_raw = 65536 - (positive - pointer);
             let negr_raw = -(negative - pointer);
 
