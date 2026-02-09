@@ -49,7 +49,7 @@ while (true) {
                 process.exit();
             case 0: // Expected behavior in fuzzing
                 break;
-            default: // Case of panic
+            case 101: // panic
                 process.exit();
         }
     }
