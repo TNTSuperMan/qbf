@@ -42,8 +42,9 @@ impl InternalRangeState {
         self.curr_positive = pointer;
         self.curr_negative = pointer;
     }
-    pub fn apply_loop(&mut self, ir_at: usize) {
+    pub fn apply_loop(&mut self, ir_at: usize, pointer: isize) {
         let ri = self.map.get_mut(&ir_at).unwrap();
+        ri.pointer = pointer;
         ri.positive = max(ri.positive, self.curr_positive);
         ri.negative = min(ri.negative, self.curr_negative);
     }
@@ -118,7 +119,7 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
             }
             IROp::LoopStart(end) => {
                 if let IROp::LoopEndWithOffset(_, _) = ir_nodes[*end].opcode {
-                    internal_ri.apply_loop(*end);
+                    internal_ri.apply_loop(*end, *pointer);
                 }
             }
             IROp::LoopEndWithOffset(_start, _offset) => {
