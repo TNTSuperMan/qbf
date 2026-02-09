@@ -17,14 +17,14 @@ impl Sign {
     }
 }
 
-struct InternalRangeInfo {
+struct InternalRangeState {
     map: HashMap<usize, (Sign, isize, isize)>,
     curr_positive: isize,
     curr_negative: isize,
 }
-impl InternalRangeInfo {
-    pub fn new() -> InternalRangeInfo {
-        InternalRangeInfo {
+impl InternalRangeState {
+    pub fn new() -> InternalRangeState {
+        InternalRangeState {
             map: HashMap::new(),
             curr_positive: isize::MIN,
             curr_negative: isize::MAX,
@@ -68,7 +68,7 @@ pub struct RangeInfo {
     pub do_opt_first: bool,
 }
 impl RangeInfo {
-    fn from(internal_ri: &InternalRangeInfo) -> Result<RangeInfo, String> {
+    fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
         let map_arr: Result<Vec<(usize, (Sign, u16))>, String> = internal_ri.map.iter().map(|(&ir_at, &(sign, ptr, r))| {
             if let Ok(ri16) = i16::try_from(ptr - r) {
                 match sign {
@@ -87,7 +87,7 @@ impl RangeInfo {
 }
 
 pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
-    let mut internal_ri = InternalRangeInfo::new();
+    let mut internal_ri = InternalRangeState::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
         internal_ri.subscribe(*pointer);
