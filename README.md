@@ -1,13 +1,12 @@
-# qbf
-![qbf logo](./assets/qbf.png)
+# brainrot
 
-A quickly Brainfuck runtime.
+A rotten Brainfuck runtime.
 
 ## Usage
 
 ```bash
-$ qbf mandel.bf
-$ qbf long.bf --benchmark-count=16
+$ brainrot mandel.bf
+$ brainrot long.bf --benchmark-count=16
 ```
 
 ## Benchmark

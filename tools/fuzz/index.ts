@@ -31,7 +31,7 @@ function GenerateRandomBFCode(min: number, max: number): string {
     while ((code = _randombf(max)).length < min);
     return code;
 }
-const QBF_FILE = `target/${env.QBF_MODE ?? "debug"}/qbf`;
+const QBF_FILE = `target/${env.QBF_MODE ?? "debug"}/brainrot`;
 const TEMP_BF = "./box/bf/temp.bf";
 const tmp = file(TEMP_BF);
 while (true) {
@@ -39,12 +39,12 @@ while (true) {
     const exec_result = execute({ code, timeout_cycles: MAX_STEPS });
     if (exec_result.type !== "timeout") {
         await tmp.write(code);
-        const qbf_process = spawn({
+        const brainrot_process = spawn({
             cmd: [QBF_FILE, TEMP_BF],
         });
-        switch (await Promise.race([qbf_process.exited, sleep(TIMEOUT_MS)])) {
+        switch (await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)])) {
             case undefined:
-                qbf_process.kill();
+                brainrot_process.kill();
                 console.error("Timeout");
                 process.exit();
             case 0: // Expected behavior in fuzzing

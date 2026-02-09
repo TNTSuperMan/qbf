@@ -11,7 +11,7 @@ mod trace;
 mod range;
 
 #[derive(Parser, Debug)]
-#[command(name = "qbf")]
+#[command(name = "brainrot")]
 struct Args {
     #[arg(value_name = "FILE")]
     file: String,
