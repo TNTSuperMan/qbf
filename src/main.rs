@@ -1,4 +1,4 @@
-use std::{fs, time::Instant};
+use std::fs;
 
 use crate::{cisc::run_cisc, ir::parse_to_ir, range::generate_range_info};
 use clap::Parser;
@@ -14,9 +14,6 @@ mod range;
 struct Args {
     #[arg(value_name = "FILE")]
     file: String,
-    
-    #[arg(short, long)]
-    benchmark_count: Option<usize>,
 
     #[arg(short, long)]
     flush: bool,
@@ -30,77 +27,39 @@ fn main() {
             eprintln!("File Error: {}", e);
         }
         Ok(code) => {
-            if let Some(count) = args.benchmark_count {
-                match parse_to_ir(&code) {
-                    Ok(ir) => {
-                        match generate_range_info(&ir) {
-                            Ok(_ri) => {}
-                            Err(msg) => {
-                                eprintln!("{}", msg);
-                                eprintln!("Run without --benchmark-count for more details");
-                                return;
-                            }
-                        }
-                    },
-                    Err(msg) => {
-                        eprintln!("{}", msg);
-                        eprintln!("Run without --benchmark-count for more details");
-                        return;
-                    }
-                };
-                let mut times: Vec<f64> = vec![];
-
-                for _ in 0..count {
-                    let start = Instant::now();
-
-                    let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
-                    let range_info = generate_range_info(&ir).unwrap();
-                    
-                    if let Err(err) = run_cisc(&ir, &range_info, args.flush) {
-                        eprintln!("{}", err);
-                        return;
-                    }
-
-                    times.push(start.elapsed().as_secs_f64());
-                }
-
-                let mean = times.iter().sum::<f64>() / times.len() as f64;
-                println!("Mean time(sec): {}", mean);
-            } else {
-                let ir = match parse_to_ir(&code) {
-                    Ok(ir) => ir,
-                    Err(msg) => {
-                        // TODO: 詳細にエラーを出す仕組みにする
-                        eprintln!("{}", msg);
-                        return;
-                    }
-                };
-                let range_info = match generate_range_info(&ir) {
-                    Ok(ri) => ri,
-                    Err(msg) => {
-                        // TODO: 詳細にエラーを出す仕組みにする
-                        eprintln!("{}", msg);
-                        return;
-                    }
-                };
-                #[cfg(feature = "debug")]
-                fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
-
-                if let Err(msg) = run_cisc(&ir, &range_info, args.flush) {
+            let ir = match parse_to_ir(&code) {
+                Ok(ir) => ir,
+                Err(msg) => {
+                    // TODO: 詳細にエラーを出す仕組みにする
                     eprintln!("{}", msg);
+                    return;
                 }
+            };
+            let range_info = match generate_range_info(&ir) {
+                Ok(ri) => ri,
+                Err(msg) => {
+                    // TODO: 詳細にエラーを出す仕組みにする
+                    eprintln!("{}", msg);
+                    return;
+                }
+            };
+            #[cfg(feature = "debug")]
+            fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
 
-                #[cfg(feature = "debug")] {
-                    // use crate::ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
-                    /* let noend_ir = &ir[0..ir.len()-1];
-                    let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
-                    let one_round = inline_ssa_history(&raw);
-                    let two_round = inline_ssa_history(&one_round);
-                    fs::write("./box/ssa", format!("{:?}", raw)).expect("failed to write");
-                    fs::write("./box/ssa_opt1", format!("{:?}", one_round)).expect("failed to write");
-                    fs::write("./box/ssa_opt2", format!("{:?}", two_round)).expect("failed to write");
-                    fs::write("./box/eval_order", format!("{:?}", resolve_eval_order(&two_round))).expect("failed to write"); */
-                }
+            if let Err(msg) = run_cisc(&ir, &range_info, args.flush) {
+                eprintln!("{}", msg);
+            }
+
+            #[cfg(feature = "debug")] {
+                // use crate::ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
+                /* let noend_ir = &ir[0..ir.len()-1];
+                let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
+                let one_round = inline_ssa_history(&raw);
+                let two_round = inline_ssa_history(&one_round);
+                fs::write("./box/ssa", format!("{:?}", raw)).expect("failed to write");
+                fs::write("./box/ssa_opt1", format!("{:?}", one_round)).expect("failed to write");
+                fs::write("./box/ssa_opt2", format!("{:?}", two_round)).expect("failed to write");
+                fs::write("./box/eval_order", format!("{:?}", resolve_eval_order(&two_round))).expect("failed to write"); */
             }
         }
     }
