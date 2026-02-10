@@ -51,16 +51,19 @@ while (true) {
             stdin: new Blob([code]),
             stderr: "pipe",
         });
-        switch (await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)])) {
+        const race_res = await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)]);
+        const stderr = await brainrot_process.stderr.text();
+        if (!race_res) { // sleep(TIMEOUT_MS)の挙動
+            brainrot_process.kill();
+            //await report(code, "timeout");
+        } else switch (race_res) {
             case 0: // Expected behavior in fuzzing
                 break;
-            case undefined:
-                brainrot_process.kill();
-                await report(code, "timeout");
-                break;
             case 101: // panic
-                const stderr = await brainrot_process.stderr.text();
                 await report(code, `panic occurred:\n${stderr}`);
+                break;
+            default:
+                await report(code, `unknown behavior, exitcode: ${race_res}. stderr:\n${stderr}`);
                 break;
         }
     }
