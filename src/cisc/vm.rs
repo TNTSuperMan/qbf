@@ -27,28 +27,45 @@ impl VM {
 
 pub struct UnsafeVM<'a> {
     pub inner: &'a mut VM,
-    pub pc: usize,
+    memory_at: *mut u8,
     pointer: *mut u8,
+    internal_insts_at: *mut NewBytecode,
+    internal_pc: *mut NewBytecode,
 }
 impl<'a> UnsafeVM<'a> {
     pub unsafe fn new(vm: &'a mut VM) -> UnsafeVM<'a> {
-        let pointer = vm.memory.0.as_mut_ptr().add(vm.pointer);
-        let pc = vm.pc;
-        UnsafeVM { inner: vm, pointer, pc }
+        let memory_at = vm.memory.0.as_mut_ptr();
+        let pointer = memory_at.add(vm.pointer);
+        let internal_insts_at = vm.insts.as_mut_ptr();
+        let internal_pc = internal_insts_at.add(vm.pc);
+        UnsafeVM { inner: vm, memory_at, pointer, internal_insts_at, internal_pc }
     }
 
-    pub unsafe fn get_op(&mut self) -> &NewBytecode {
+    pub fn get_pc(&self) -> usize {
+        // SAFETY: 差分を求めるだけだから安全なはず
+        unsafe { self.internal_pc.offset_from_unsigned(self.internal_insts_at) }
+    }
+    pub unsafe fn get_op(&mut self) -> NewBytecode {
         #[cfg(feature = "debug")] {
-            if self.pc >= self.inner.insts.len() {
+            if self.get_pc() >= self.inner.insts.len() {
                 panic!("[UNSAFE] Runtime Error: Out of range insts");
             }
         }
-        self.inner.insts.get_unchecked(self.pc)
+        *self.internal_pc
+    }
+    pub unsafe fn jump_abs(&mut self, to: u32) {
+        self.internal_pc = self.internal_insts_at.add(to as usize);
+    }
+    pub unsafe fn jump_back(&mut self, to: u16) {
+        self.internal_pc = self.internal_pc.sub(to as usize);
+    }
+    pub unsafe fn jump_one(&mut self) {
+        self.internal_pc = self.internal_pc.add(1);
     }
 
     pub fn get_ptr(&self) -> usize {
         // SAFETY: 差分を求めるだけだから安全なはず
-        unsafe { self.pointer.offset_from_unsigned(self.inner.memory.0.as_ptr()) }
+        unsafe { self.pointer.offset_from_unsigned(self.memory_at) }
     }
 
     pub fn rangecheck(&self, offset: isize) {
@@ -99,6 +116,6 @@ impl<'a> UnsafeVM<'a> {
 impl<'a> Drop for UnsafeVM<'a> {
     fn drop(&mut self) {
         self.inner.pointer = self.get_ptr();
-        self.inner.pc = self.pc;
+        self.inner.pc = self.get_pc();
     }
 }

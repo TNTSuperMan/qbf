@@ -11,18 +11,19 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
     
     loop {
         #[cfg(feature = "debug")] {
-            vm.inner.ocm.opt[vm.pc] += 1;
+            let pc = vm.get_pc();
+            vm.inner.ocm.opt[pc] += 1;
         }
 
-        let bytecode = *vm.get_op();
+        let bytecode = vm.get_op();
         
         #[cfg(feature = "trace")]
-        println!("[TRACE] tier: Opt ptr: {}, executing {}", vm.get_ptr(), vm.pc);
+        println!("[TRACE] tier: Opt ptr: {}, executing {}", vm.get_ptr(), vm.get_pc());
         
         match bytecode {
             NewBytecode::Breakpoint { delta } => {
                 vm.step_ptr(delta as isize);
-                eprintln!("PC: {}, PTR: {}", vm.pc, vm.get_ptr());
+                eprintln!("PC: {}, PTR: {}", vm.get_pc(), vm.get_ptr());
             }
 
             NewBytecode::SingleAdd { delta, val } => {
@@ -61,7 +62,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             NewBytecode::BothRangeCheck { positive, negative } => {
                 let ptr = vm.get_ptr();
                 if positive_is_out_of_range(positive, ptr) || negative_is_out_of_range(negative, ptr) {
-                    vm.pc += 1;
+                    vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
             }
@@ -77,7 +78,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                     vm.step_ptr(step as isize);
                 }
                 if positive_is_out_of_range(range, vm.get_ptr()) {
-                    vm.pc += 1;
+                    vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
             }
@@ -87,7 +88,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                     vm.step_ptr(step as isize);
                 }
                 if negative_is_out_of_range(range, vm.get_ptr()) {
-                    vm.pc += 1;
+                    vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
             }
@@ -107,7 +108,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 if positive_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.add(vm.get_ptr(), val)?;
-                    vm.pc += 1;
+                    vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.step_ptr(delta2 as isize);
@@ -121,7 +122,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 if negative_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.add(vm.get_ptr(), val)?;
-                    vm.pc += 1;
+                    vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.step_ptr(delta2 as isize);
@@ -143,7 +144,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 if positive_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.set(vm.get_ptr(), val)?;
-                    vm.pc += 1;
+                    vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.step_ptr(delta2 as isize);
@@ -157,7 +158,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 if negative_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.set(vm.get_ptr(), val)?;
-                    vm.pc += 1;
+                    vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 vm.step_ptr(delta2 as isize);
@@ -168,7 +169,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta as isize);
                 let val = vm.get();
                 if val == 0 {
-                    vm.pc = jz_abs as usize;
+                    vm.jump_abs(jz_abs);
                     continue;
                 } else {
                     mul_val = val;
@@ -223,7 +224,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta as isize);
                 let val = vm.get();
                 if val == 0 {
-                    vm.pc = jz_abs as usize;
+                    vm.jump_abs(jz_abs);
                     continue;
                 } else {
                     mul_val = val;
@@ -252,14 +253,14 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             NewBytecode::JmpIfZero { delta, addr_abs } => {
                 vm.step_ptr(delta as isize);
                 if vm.get() == 0 {
-                    vm.pc = addr_abs as usize;
+                    vm.jump_abs(addr_abs);
                     continue;
                 }
             }
             NewBytecode::JmpIfNotZero { delta, addr_abs } => {
                 vm.step_ptr(delta as isize);
                 if vm.get() != 0 {
-                    vm.pc = addr_abs as usize;
+                    vm.jump_abs(addr_abs);
                     continue;
                 }
             }
@@ -267,14 +268,14 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta as isize);
                 if positive_is_out_of_range(range, vm.get_ptr()) {
                     if vm.inner.memory.get(vm.get_ptr())? != 0 {
-                        vm.pc -= addr_back as usize;
+                        vm.jump_back(addr_back);
                     } else {
-                        vm.pc += 1;
+                        vm.jump_one();
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.get() != 0 {
-                    vm.pc -= addr_back as usize;
+                    vm.jump_back(addr_back);
                     continue;
                 }
             }
@@ -282,14 +283,14 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta as isize);
                 if negative_is_out_of_range(range, vm.get_ptr()) {
                     if vm.inner.memory.get(vm.get_ptr())? != 0 {
-                        vm.pc -= addr_back as usize;
+                        vm.jump_back(addr_back);
                     } else {
-                        vm.pc += 1;
+                        vm.jump_one();
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.get() != 0 {
-                    vm.pc -= addr_back as usize;
+                    vm.jump_back(addr_back);
                     continue;
                 }
             }
@@ -298,14 +299,14 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 let ptr = vm.get_ptr();
                 if positive_is_out_of_range(positive, ptr) || negative_is_out_of_range(negative, ptr) {
                     if vm.inner.memory.get(vm.get_ptr())? != 0 {
-                        vm.pc -= addr_back as usize;
+                        vm.jump_back(addr_back);
                     } else {
-                        vm.pc += 1;
+                        vm.jump_one();
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.get() != 0 {
-                    vm.pc -= addr_back as usize;
+                    vm.jump_back(addr_back);
                     continue;
                 }
             }
@@ -315,6 +316,6 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 return Ok(InterpreterResult::End);
             }
         }
-        vm.pc += 1;
+        vm.jump_one();
     }
 }
