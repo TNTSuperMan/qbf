@@ -46,11 +46,13 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
     for char in code.chars() {
         match char {
             '!' => {
-                #[cfg(feature = "debug")] {
-                    push_inst!(IROp::End);
-                }
+                #[cfg(feature = "debug")]
+                push_inst!(IROp::End);
             }
-            '#' => { push_inst!(IROp::Breakpoint) }
+            '#' => {
+                #[cfg(feature = "debug")]
+                push_inst!(IROp::Breakpoint);
+            }
             '+' => {
                 if let Some(IR { pointer: last_ptr, opcode }) = insts.last_mut() {
                     if *last_ptr == pointer {
