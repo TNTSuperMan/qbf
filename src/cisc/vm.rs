@@ -66,8 +66,7 @@ impl<'a> UnsafeVM<'a> {
     }
 
     pub fn get_ptr(&self) -> usize {
-        // SAFETY: 差分を求めるだけだから安全なはず
-        unsafe { self.pointer.offset_from_unsigned(self.memory_at) }
+        self.pointer.addr().wrapping_sub(self.memory_at.addr())
     }
 
     pub fn rangecheck(&self, offset: isize) {
