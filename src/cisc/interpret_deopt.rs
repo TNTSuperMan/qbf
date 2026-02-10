@@ -259,6 +259,9 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             NewBytecode::Out { delta } => {
                 vm.step_ptr(delta as isize);
                 stdout.write(&[vm.memory.get(vm.pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
+                if vm.flush {
+                    stdout.flush().map_err(|_| "Runtime Error: Failed to flush")?;
+                }
             }
 
             NewBytecode::JmpIfZero { delta, addr_abs } => {

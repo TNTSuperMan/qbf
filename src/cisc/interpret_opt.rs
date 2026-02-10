@@ -246,6 +246,9 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             NewBytecode::Out { delta } => {
                 vm.step_ptr(delta as isize);
                 stdout.write(&[vm.get()]).map_err(|_| "Runtime Error: Failed to print")?;
+                if vm.inner.flush {
+                    stdout.flush().map_err(|_| "Runtime Error: Failed to flush")?;
+                }
             }
 
             NewBytecode::JmpIfZero { delta, addr_abs } => {

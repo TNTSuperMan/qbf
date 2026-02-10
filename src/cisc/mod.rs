@@ -7,8 +7,8 @@ mod trace;
 mod vm;
 mod internal;
 
-pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<(), String> {
-    let mut vm = VM::new(ir_nodes, range_info)?;
+pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool) -> Result<(), String> {
+    let mut vm = VM::new(ir_nodes, range_info, flush)?;
     let mut tier = if range_info.do_opt_first {
         Tier::Opt
     } else {

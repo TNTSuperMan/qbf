@@ -17,6 +17,9 @@ struct Args {
     
     #[arg(short, long)]
     benchmark_count: Option<usize>,
+
+    #[arg(short, long)]
+    flush: bool,
 }
 
 fn main() {
@@ -53,7 +56,7 @@ fn main() {
                     let ir = parse_to_ir(&code).unwrap(); // SAFETY: 最初に検証済みのため安全
                     let range_info = generate_range_info(&ir).unwrap();
                     
-                    if let Err(err) = run_cisc(&ir, &range_info) {
+                    if let Err(err) = run_cisc(&ir, &range_info, args.flush) {
                         eprintln!("{}", err);
                         return;
                     }
@@ -83,7 +86,7 @@ fn main() {
                 #[cfg(feature = "debug")]
                 fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
 
-                if let Err(msg) = run_cisc(&ir, &range_info) {
+                if let Err(msg) = run_cisc(&ir, &range_info, args.flush) {
                     eprintln!("{}", msg);
                 }
 

@@ -6,10 +6,11 @@ pub struct VM {
     pub ocm: OperationCountMap,
     pub pc: usize,
     pub pointer: usize,
+    pub flush: bool,
 }
 
 impl VM {
-    pub fn new(ir: &[IR], range_info: &RangeInfo) -> Result<VM, String> {
+    pub fn new(ir: &[IR], range_info: &RangeInfo, flush: bool) -> Result<VM, String> {
         let bytecodes = ir_to_bytecodes(ir, range_info)?;
         let ocm = OperationCountMap::new(bytecodes.len());
         Ok(VM {
@@ -18,6 +19,7 @@ impl VM {
             ocm,
             pc: 0,
             pointer: 0,
+            flush,
         })
     }
     pub fn step_ptr(&mut self, delta: isize) {
