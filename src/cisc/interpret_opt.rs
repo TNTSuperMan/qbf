@@ -163,11 +163,11 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.memory.set_unchecked(vm.pointer, val);
             }
 
-            NewBytecode::MulStart { delta, jz } => {
+            NewBytecode::MulStart { delta, jz_abs } => {
                 vm.step_ptr(delta as isize);
                 let val = vm.memory.get_unchecked(vm.pointer);
                 if val == 0 {
-                    vm.pc = jz as usize;
+                    vm.pc = jz_abs as usize;
                     continue;
                 } else {
                     mul_val = val;
@@ -218,11 +218,11 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.memory.set_unchecked(vm.pointer, 0);
             }
 
-            NewBytecode::MoveStart { delta, jz } => {
+            NewBytecode::MoveStart { delta, jz_abs } => {
                 vm.step_ptr(delta as isize);
                 let val = vm.memory.get_unchecked(vm.pointer);
                 if val == 0 {
-                    vm.pc = jz as usize;
+                    vm.pc = jz_abs as usize;
                     continue;
                 } else {
                     mul_val = val;
@@ -248,62 +248,62 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 stdout.write(&[vm.memory.get_unchecked(vm.pointer)]).map_err(|_| "Runtime Error: Failed to print")?;
             }
 
-            NewBytecode::JmpIfZero { delta, addr } => {
+            NewBytecode::JmpIfZero { delta, addr_abs } => {
                 vm.step_ptr(delta as isize);
                 if vm.memory.get_unchecked(vm.pointer) == 0 {
-                    vm.pc = addr as usize;
+                    vm.pc = addr_abs as usize;
                     continue;
                 }
             }
-            NewBytecode::JmpIfNotZero { delta, addr } => {
+            NewBytecode::JmpIfNotZero { delta, addr_abs } => {
                 vm.step_ptr(delta as isize);
                 if vm.memory.get_unchecked(vm.pointer) != 0 {
-                    vm.pc = addr as usize;
+                    vm.pc = addr_abs as usize;
                     continue;
                 }
             }
-            NewBytecode::PositiveRangeCheckJNZ { delta, addr_subrel, range } => {
+            NewBytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
                 if positive_is_out_of_range(range, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc -= addr_subrel as usize;
+                        vm.pc -= addr_back as usize;
                     } else {
                         vm.pc += 1;
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.memory.get_unchecked(vm.pointer) != 0 {
-                    vm.pc -= addr_subrel as usize;
+                    vm.pc -= addr_back as usize;
                     continue;
                 }
             }
-            NewBytecode::NegativeRangeCheckJNZ { delta, addr_subrel, range } => {
+            NewBytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
                 if negative_is_out_of_range(range, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc -= addr_subrel as usize;
+                        vm.pc -= addr_back as usize;
                     } else {
                         vm.pc += 1;
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.memory.get_unchecked(vm.pointer) != 0 {
-                    vm.pc -= addr_subrel as usize;
+                    vm.pc -= addr_back as usize;
                     continue;
                 }
             }
-            NewBytecode::BothRangeCheckJNZ { delta, addr_subrel, positive, negative } => {
+            NewBytecode::BothRangeCheckJNZ { delta, addr_back, positive, negative } => {
                 vm.step_ptr(delta as isize);
                 if positive_is_out_of_range(positive, vm.pointer) || negative_is_out_of_range(negative, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc -= addr_subrel as usize;
+                        vm.pc -= addr_back as usize;
                     } else {
                         vm.pc += 1;
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
                 if vm.memory.get_unchecked(vm.pointer) != 0 {
-                    vm.pc -= addr_subrel as usize;
+                    vm.pc -= addr_back as usize;
                     continue;
                 }
             }

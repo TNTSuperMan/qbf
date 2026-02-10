@@ -26,7 +26,7 @@ pub enum NewBytecode {
     ShiftSetP { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
     ShiftSetN { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
 
-    MulStart { delta: i16, jz: u32 },
+    MulStart { delta: i16, jz_abs: u32 },
     Mul { delta: i16, val: u8 },
 
     SingleMoveAdd { delta: i16, to: i16 },
@@ -37,18 +37,18 @@ pub enum NewBytecode {
     DoubleMoveSubAdd { delta: i16, to1: i16, to2: i16 },
     DoubleMoveSubSub { delta: i16, to1: i16, to2: i16 },
 
-    MoveStart { delta: i16, jz: u32 },
+    MoveStart { delta: i16, jz_abs: u32 },
     MoveAdd { delta: i16 },
     MoveSub { delta: i16 },
 
     In { delta: i16 },
     Out { delta: i16 },
 
-    JmpIfZero { delta: i16, addr: u32 },
-    JmpIfNotZero { delta: i16, addr: u32 },
-    PositiveRangeCheckJNZ { delta: i16, addr_subrel: u16, range: u16 },
-    NegativeRangeCheckJNZ { delta: i16, addr_subrel: u16, range: u16 },
-    BothRangeCheckJNZ { delta: i8, addr_subrel: u16, positive: u16, negative: u16 },
+    JmpIfZero { delta: i16, addr_abs: u32 },
+    JmpIfNotZero { delta: i16, addr_abs: u32 },
+    PositiveRangeCheckJNZ { delta: i16, addr_back: u16, range: u16 },
+    NegativeRangeCheckJNZ { delta: i16, addr_back: u16, range: u16 },
+    BothRangeCheckJNZ { delta: i8, addr_back: u16, positive: u16, negative: u16 },
 
     End { delta: i16 },
 }
@@ -164,7 +164,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Ne
                     IROp::MulAndSetZero(dests) => {
                         let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
 
-                        bytecodes.push(NewBytecode::MulStart { delta, jz: skip_pc });
+                        bytecodes.push(NewBytecode::MulStart { delta, jz_abs: skip_pc });
 
                         for (dest_ptr, dest_val) in dests {
                             bytecodes.push(NewBytecode::Mul { delta: i16::try_from(dest_ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?, val: *dest_val });
@@ -184,7 +184,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Ne
                         } else {
                             let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
 
-                            bytecodes.push(NewBytecode::MoveStart { delta, jz: skip_pc });
+                            bytecodes.push(NewBytecode::MoveStart { delta, jz_abs: skip_pc });
 
                             for (dest_ptr, is_pos) in dests {
                                 if *is_pos {
@@ -221,34 +221,34 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Ne
 
                     IROp::LoopStart(_end) => {
                         loop_stack.push(bytecodes.len());
-                        bytecodes.push(NewBytecode::JmpIfZero { delta, addr: u32::MAX });
+                        bytecodes.push(NewBytecode::JmpIfZero { delta, addr_abs: u32::MAX });
                     }
                     IROp::LoopEnd(_start) => {
                         let start = loop_stack.pop().unwrap();
                         let end = bytecodes.len();
-                        if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
+                        if let NewBytecode::JmpIfZero { addr_abs: addr, .. } = &mut bytecodes[start] {
                             *addr = (end + 1) as u32;
                         } else {
                             return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
                         }
-                        bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 });
+                        bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr_abs: (start + 1) as u32 });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
                         let range = range_info.map.get(&i).unwrap();
                         let start = loop_stack.pop().unwrap();
                         let end = bytecodes.len();
                         last_ptr -= offset;
-                        if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
+                        if let NewBytecode::JmpIfZero { addr_abs: addr, .. } = &mut bytecodes[start] {
                             *addr = (end + 1) as u32;
                         } else {
                             return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
                         }
                         let subrel = end - start - 1;
                         match range {
-                            MemoryRange::None => bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 }),
-                            MemoryRange::Positive(r) => bytecodes.push(NewBytecode::PositiveRangeCheckJNZ { delta, addr_subrel: subrel as u16, range: *r }),
-                            MemoryRange::Negative(r) => bytecodes.push(NewBytecode::NegativeRangeCheckJNZ { delta, addr_subrel: subrel as u16, range: *r }),
-                            MemoryRange::Both { positive, negative } => bytecodes.push(NewBytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr_subrel: subrel as u16, positive: *positive, negative: *negative }),
+                            MemoryRange::None => bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr_abs: (start + 1) as u32 }),
+                            MemoryRange::Positive(r) => bytecodes.push(NewBytecode::PositiveRangeCheckJNZ { delta, addr_back: subrel as u16, range: *r }),
+                            MemoryRange::Negative(r) => bytecodes.push(NewBytecode::NegativeRangeCheckJNZ { delta, addr_back: subrel as u16, range: *r }),
+                            MemoryRange::Both { positive, negative } => bytecodes.push(NewBytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr_back: subrel as u16, positive: *positive, negative: *negative }),
                         }
                     }
 
