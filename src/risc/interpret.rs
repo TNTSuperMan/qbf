@@ -12,7 +12,7 @@ pub fn run(insts: &[Bytecode], memory: &mut Memory, ocm: &mut OperationCountMap)
     
     loop {
         #[cfg(feature = "debug")] {
-            ocm.0[pc] += 1;
+            ocm.deopt[pc] += 1;
         }
 
         let bytecode = &insts[pc];

@@ -10,7 +10,7 @@ pub fn generate_bytecode_trace(bytecodes: &[Bytecode], ocm: &OperationCountMap) 
         if b.opcode == OpCode::JmpIfNotZero {
             lv -= 1;
         }
-        str += &format!("{}:\t{}{:?}\n", (ocm.0[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
+        str += &format!("{}:\t{}{:?}\n", (ocm.deopt[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
         if b.opcode == OpCode::JmpIfZero {
             lv += 1;
         }

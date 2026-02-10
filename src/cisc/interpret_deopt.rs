@@ -10,7 +10,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
     
     loop {
         #[cfg(feature = "debug")] {
-            vm.ocm.0[vm.pc] += 1;
+            vm.ocm.deopt[vm.pc] += 1;
         }
 
         let bytecode = vm.insts[vm.pc];

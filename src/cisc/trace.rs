@@ -16,12 +16,13 @@ pub fn generate_bytecode_trace(bytecodes: &[NewBytecode], ocm: &OperationCountMa
             NewBytecode::BothRangeCheckJNZ { .. } => lv -= 1,
             _ => {}
         }
-        str += &format!("{}:\t{}{:?}\n", (ocm.0[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
+        str += &format!("{}\t{}\t{}{:?}\n", (ocm.deopt[i].wrapping_add(1) as f64).log2().floor(), (ocm.opt[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
         match b {
             NewBytecode::JmpIfZero { .. } => lv += 1,
             _ => {}
         }
     }
+    str += &format!("step count(deopt/opt): {}/{}", ocm.deopt.iter().fold(0, |acc, e| acc + e), ocm.opt.iter().fold(0, |acc, e| acc + e));
 
     str
 }

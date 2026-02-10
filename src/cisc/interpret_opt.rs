@@ -11,7 +11,7 @@ pub unsafe fn run_opt(vm: &mut VM) -> Result<InterpreterResult, String> {
     
     loop {
         #[cfg(feature = "debug")] {
-            vm.ocm.0[vm.pc] += 1;
+            vm.ocm.opt[vm.pc] += 1;
         }
 
         let bytecode = vm.insts[vm.pc];
