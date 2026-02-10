@@ -47,42 +47,4 @@ impl Memory {
             Ok(())
         }
     }
-    #[inline(always)]
-    pub unsafe fn get_unchecked(&self, index: usize) -> u8 {
-        #[cfg(feature = "debug")] {
-            if self.0.len() <= index {
-                panic!("[UNSAFE] Runtime Error: Out of range memory get, Address: {} ", index);
-            }
-        }
-        *self.0.as_ptr().add(index)
-    }
-    #[inline(always)]
-    pub unsafe fn set_unchecked(&mut self, index: usize, value: u8) {
-        #[cfg(feature = "debug")] {
-            if self.0.len() <= index {
-                panic!("[UNSAFE] Runtime Error: Out of range memory set, Address: {} ", index);
-            }
-        }
-        *self.0.as_mut_ptr().add(index) = value;
-    }
-    #[inline(always)]
-    pub unsafe fn add_unchecked(&mut self, index: usize, value: u8) {
-        #[cfg(feature = "debug")] {
-            if self.0.len() <= index {
-                panic!("[UNSAFE] Runtime Error: Out of range memory add, Address: {} ", index);
-            }
-        }
-        let ptr = self.0.as_mut_ptr().add(index);
-        *ptr = (*ptr).wrapping_add(value);
-    }
-    #[inline(always)]
-    pub unsafe fn sub_unchecked(&mut self, index: usize, value: u8) {
-        #[cfg(feature = "debug")] {
-            if self.0.len() <= index {
-                panic!("[UNSAFE] Runtime Error: Out of range memory sub, Address: {} ", index);
-            }
-        }
-        let ptr = self.0.as_mut_ptr().add(index);
-        *ptr = (*ptr).wrapping_sub(value);
-    }
 }
