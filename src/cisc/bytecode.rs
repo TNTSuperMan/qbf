@@ -44,11 +44,11 @@ pub enum NewBytecode {
     In { delta: i16 },
     Out { delta: i16 },
 
-    JmpIfZero { delta: i16, addr: u32 },
-    JmpIfNotZero { delta: i16, addr: u32 },
-    PositiveRangeCheckJNZ { delta: i16, addr_subrel: u16, range: u16 },
-    NegativeRangeCheckJNZ { delta: i16, addr_subrel: u16, range: u16 },
-    BothRangeCheckJNZ { delta: i8, addr_subrel: u16, positive: u16, negative: u16 },
+    JmpIfZero { delta: i16, addr: u16 }, // 正方向の相対ジャンプ
+    JmpIfNotZero { delta: i16, addr: u16 }, // ここ以降は負方向の相対ジャンプ
+    PositiveRangeCheckJNZ { delta: i16, addr: u16, range: u16 },
+    NegativeRangeCheckJNZ { delta: i16, addr: u16, range: u16 },
+    BothRangeCheckJNZ { delta: i8, addr: u16, positive: u16, negative: u16 },
 
     End { delta: i16 },
 }
@@ -221,34 +221,37 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<Ne
 
                     IROp::LoopStart(_end) => {
                         loop_stack.push(bytecodes.len());
-                        bytecodes.push(NewBytecode::JmpIfZero { delta, addr: u32::MAX });
+                        bytecodes.push(NewBytecode::JmpIfZero { delta, addr: 0 });
                     }
                     IROp::LoopEnd(_start) => {
                         let start = loop_stack.pop().unwrap();
                         let end = bytecodes.len();
+                        let jz_addr = u16::try_from(end - start + 1).map_err(|_| "Optimization Error: Jump range overflow")?;
+                        let jnz_addr = u16::try_from(end - start - 1).map_err(|_| "Optimization Error: Jump range overflow")?;
                         if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
-                            *addr = (end + 1) as u32;
+                            *addr = jz_addr;
                         } else {
                             return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
                         }
-                        bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 });
+                        bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: jnz_addr });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
                         let range = range_info.map.get(&i).unwrap();
                         let start = loop_stack.pop().unwrap();
                         let end = bytecodes.len();
+                        let jz_addr = u16::try_from(end - start + 1).map_err(|_| "Optimization Error: Jump range overflow")?;
+                        let jnz_addr = u16::try_from(end - start - 1).map_err(|_| "Optimization Error: Jump range overflow")?;
                         last_ptr -= offset;
                         if let NewBytecode::JmpIfZero { addr, .. } = &mut bytecodes[start] {
-                            *addr = (end + 1) as u32;
+                            *addr = jz_addr;
                         } else {
                             return Err("InternalError: Corresponding JmpIfZero is not hit".to_owned());
                         }
-                        let subrel = end - start - 1;
                         match range {
-                            MemoryRange::None => bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: (start + 1) as u32 }),
-                            MemoryRange::Positive(r) => bytecodes.push(NewBytecode::PositiveRangeCheckJNZ { delta, addr_subrel: subrel as u16, range: *r }),
-                            MemoryRange::Negative(r) => bytecodes.push(NewBytecode::NegativeRangeCheckJNZ { delta, addr_subrel: subrel as u16, range: *r }),
-                            MemoryRange::Both { positive, negative } => bytecodes.push(NewBytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr_subrel: subrel as u16, positive: *positive, negative: *negative }),
+                            MemoryRange::None => bytecodes.push(NewBytecode::JmpIfNotZero { delta, addr: jnz_addr }),
+                            MemoryRange::Positive(r) => bytecodes.push(NewBytecode::PositiveRangeCheckJNZ { delta, addr: jnz_addr, range: *r }),
+                            MemoryRange::Negative(r) => bytecodes.push(NewBytecode::NegativeRangeCheckJNZ { delta, addr: jnz_addr, range: *r }),
+                            MemoryRange::Both { positive, negative } => bytecodes.push(NewBytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr: jnz_addr, positive: *positive, negative: *negative }),
                         }
                     }
 
