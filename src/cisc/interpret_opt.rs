@@ -15,12 +15,10 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             vm.inner.ocm.opt[pc] += 1;
         }
 
-        let bytecode = vm.get_op();
-        
         #[cfg(feature = "trace")]
         println!("[TRACE] tier: Opt ptr: {}, executing {}", vm.get_ptr(), vm.get_pc());
         
-        match bytecode {
+        match vm.get_op() {
             NewBytecode::Breakpoint { delta } => {
                 vm.step_ptr(delta as isize);
                 eprintln!("PC: {}, PTR: {}", vm.get_pc(), vm.get_ptr());
