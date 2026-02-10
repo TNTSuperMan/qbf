@@ -1,4 +1,4 @@
-import { env, file, sleep, spawn } from "bun";
+import { env, file, sleep, spawn, stdout, write } from "bun";
 import { execute } from "../exec/core";
 
 const MAX_STEPS = 1000;
@@ -32,25 +32,36 @@ function GenerateRandomBFCode(min: number, max: number): string {
     return code;
 }
 const QBF_FILE = `target/${env.QBF_MODE ?? "debug"}/brainrot`;
-const TEMP_BF = "./box/bf/temp.bf";
-const tmp = file(TEMP_BF);
+
+async function report(code: string, description: string) {
+    console.error("", description);
+    await write(`./box/fuzz/${crypto.randomUUID()}.bf`, `[
+${description.replaceAll(`[`,`{`).replaceAll(']','}')}
+]
+${code}`)
+}
+
 while (true) {
     const code = GenerateRandomBFCode(INPUT_MINLEN, INPUT_MAXLEN);
     const exec_result = execute({ code, timeout_cycles: MAX_STEPS });
     if (exec_result.type !== "timeout") {
-        await tmp.write(code);
+        stdout.write(".");
         const brainrot_process = spawn({
-            cmd: [QBF_FILE, TEMP_BF],
+            cmd: [QBF_FILE, "/dev/stdin"],
+            stdin: new Blob([code]),
+            stderr: "pipe",
         });
         switch (await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)])) {
-            case undefined:
-                brainrot_process.kill();
-                console.error("Timeout");
-                process.exit();
             case 0: // Expected behavior in fuzzing
                 break;
+            case undefined:
+                brainrot_process.kill();
+                await report(code, "timeout");
+                break;
             case 101: // panic
-                process.exit();
+                const stderr = await brainrot_process.stderr.text();
+                await report(code, `panic occurred:\n${stderr}`);
+                break;
         }
     }
 }
