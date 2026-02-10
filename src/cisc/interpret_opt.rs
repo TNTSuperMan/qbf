@@ -11,7 +11,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
     
     loop {
         #[cfg(feature = "debug")] {
-            vm.vm.ocm.opt[vm.pc] += 1;
+            vm.inner.ocm.opt[vm.pc] += 1;
         }
 
         let bytecode = *vm.get_op();
@@ -67,13 +67,13 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::Shift { delta, step } => {
                 vm.step_ptr(delta as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
             }
             NewBytecode::ShiftP { delta, step, range } => {
                 vm.step_ptr(delta as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 if positive_is_out_of_range(range, vm.get_ptr()) {
@@ -83,7 +83,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::ShiftN { delta, step, range } => {
                 vm.step_ptr(delta as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 if negative_is_out_of_range(range, vm.get_ptr()) {
@@ -93,7 +93,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::ShiftAdd { delta1, step, delta2, val } => {
                 vm.step_ptr(delta1 as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 vm.step_ptr(delta2 as isize);
@@ -101,12 +101,12 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::ShiftAddP { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 if positive_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
-                    vm.vm.memory.add(vm.get_ptr(), val)?;
+                    vm.inner.memory.add(vm.get_ptr(), val)?;
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -115,12 +115,12 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::ShiftAddN { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 if negative_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
-                    vm.vm.memory.add(vm.get_ptr(), val)?;
+                    vm.inner.memory.add(vm.get_ptr(), val)?;
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -129,7 +129,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::ShiftSet { delta1, step, delta2, val } => {
                 vm.step_ptr(delta1 as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 vm.step_ptr(delta2 as isize);
@@ -137,12 +137,12 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::ShiftSetP { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 if positive_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
-                    vm.vm.memory.set(vm.get_ptr(), val)?;
+                    vm.inner.memory.set(vm.get_ptr(), val)?;
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -151,12 +151,12 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             NewBytecode::ShiftSetN { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
-                while vm.vm.memory.get(vm.get_ptr())? != 0 {
+                while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
                 if negative_is_out_of_range(range, vm.get_ptr()) {
                     vm.step_ptr(delta2 as isize);
-                    vm.vm.memory.set(vm.get_ptr(), val)?;
+                    vm.inner.memory.set(vm.get_ptr(), val)?;
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -266,7 +266,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             NewBytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
                 if positive_is_out_of_range(range, vm.get_ptr()) {
-                    if vm.vm.memory.get(vm.get_ptr())? != 0 {
+                    if vm.inner.memory.get(vm.get_ptr())? != 0 {
                         vm.pc -= addr_back as usize;
                     } else {
                         vm.pc += 1;
@@ -281,7 +281,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             NewBytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
                 if negative_is_out_of_range(range, vm.get_ptr()) {
-                    if vm.vm.memory.get(vm.get_ptr())? != 0 {
+                    if vm.inner.memory.get(vm.get_ptr())? != 0 {
                         vm.pc -= addr_back as usize;
                     } else {
                         vm.pc += 1;
@@ -297,7 +297,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta as isize);
                 let ptr = vm.get_ptr();
                 if positive_is_out_of_range(positive, ptr) || negative_is_out_of_range(negative, ptr) {
-                    if vm.vm.memory.get(vm.get_ptr())? != 0 {
+                    if vm.inner.memory.get(vm.get_ptr())? != 0 {
                         vm.pc -= addr_back as usize;
                     } else {
                         vm.pc += 1;

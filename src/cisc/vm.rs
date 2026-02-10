@@ -26,7 +26,7 @@ impl VM {
 }
 
 pub struct UnsafeVM<'a> {
-    pub vm: &'a mut VM,
+    pub inner: &'a mut VM,
     pub pc: usize,
     pointer: *mut u8,
 }
@@ -34,25 +34,25 @@ impl<'a> UnsafeVM<'a> {
     pub unsafe fn new(vm: &'a mut VM) -> UnsafeVM<'a> {
         let pointer = vm.memory.0.as_mut_ptr().add(vm.pointer);
         let pc = vm.pc;
-        UnsafeVM { vm, pointer, pc }
+        UnsafeVM { inner: vm, pointer, pc }
     }
 
     pub unsafe fn get_op(&mut self) -> &NewBytecode {
         #[cfg(feature = "debug")] {
-            if self.pc >= self.vm.insts.len() {
+            if self.pc >= self.inner.insts.len() {
                 panic!("[UNSAFE] Runtime Error: Out of range insts");
             }
         }
-        self.vm.insts.get_unchecked(self.pc)
+        self.inner.insts.get_unchecked(self.pc)
     }
 
     pub fn get_ptr(&self) -> usize {
         // SAFETY: 差分を求めるだけだから安全なはず
-        unsafe { self.pointer.offset_from_unsigned(self.vm.memory.0.as_ptr()) }
+        unsafe { self.pointer.offset_from_unsigned(self.inner.memory.0.as_ptr()) }
     }
 
     pub fn rangecheck(&self, offset: isize) {
-        if self.vm.memory.0.len() <= (self.get_ptr().wrapping_add_signed(offset)) {
+        if self.inner.memory.0.len() <= (self.get_ptr().wrapping_add_signed(offset)) {
             panic!("[UNSAFE] Runtime Error: Out of range memory operation. Address: {} ", self.get_ptr());
         }
     }
@@ -98,7 +98,7 @@ impl<'a> UnsafeVM<'a> {
 }
 impl<'a> Drop for UnsafeVM<'a> {
     fn drop(&mut self) {
-        self.vm.pointer = self.get_ptr();
-        self.vm.pc = self.pc;
+        self.inner.pointer = self.get_ptr();
+        self.inner.pc = self.pc;
     }
 }
