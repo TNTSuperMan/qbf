@@ -7,7 +7,7 @@ mod trace;
 mod vm;
 mod internal;
 
-pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool) -> Result<(), String> {
+pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<(), String> {
     let mut vm = VM::new(ir_nodes, range_info, flush)?;
     let mut tier = if range_info.do_opt_first {
         Tier::Opt
@@ -27,7 +27,11 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool) -> Result<
         };
         match result {
             Ok(InterpreterResult::End) => {
-                write_trace(&vm);
+                #[cfg(feature = "debug")] {
+                    if out_dump {
+                        write_trace(&vm);
+                    }
+                }
                 return Ok(());
             }
             Ok(InterpreterResult::ToggleTier(t)) => {
@@ -36,8 +40,10 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool) -> Result<
                 tier = t;
             }
             Err(msg) => {
-                write_trace(&vm);
                 #[cfg(feature = "debug")] {
+                    if out_dump {
+                        write_trace(&vm);
+                    }
                     println!("PC: {}({:?}), ptr: {}", vm.pc, vm.insts[vm.pc], vm.pointer);
                 }
                 return Err(msg);

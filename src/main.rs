@@ -17,6 +17,9 @@ struct Args {
 
     #[arg(short, long)]
     flush: bool,
+
+    #[arg(short, long)]
+    out_dump: bool,
 }
 
 fn main() {
@@ -43,10 +46,13 @@ fn main() {
                     return;
                 }
             };
-            #[cfg(feature = "trace")]
-            fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
+            #[cfg(feature = "debug")] {
+                if args.out_dump {
+                    fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
+                }
+            }
 
-            if let Err(msg) = run_cisc(&ir, &range_info, args.flush) {
+            if let Err(msg) = run_cisc(&ir, &range_info, args.flush, args.out_dump) {
                 eprintln!("{}", msg);
             }
 

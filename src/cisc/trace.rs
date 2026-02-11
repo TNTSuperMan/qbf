@@ -27,10 +27,10 @@ pub fn generate_bytecode_trace(bytecodes: &[NewBytecode], ocm: &OperationCountMa
     str
 }
 
-#[cfg(not(feature = "trace"))]
+#[cfg(not(feature = "debug"))]
 pub fn write_trace(vm: &VM) {}
 
-#[cfg(feature = "trace")]
+#[cfg(feature = "debug")]
 pub fn write_trace(vm: &VM) {
     use std::fs;
     use crate::cisc::trace::generate_bytecode_trace;
