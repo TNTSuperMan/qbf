@@ -34,6 +34,31 @@ pub fn build_ssa_from_ir(ir_nodes: &[IR]) -> Option<PointerSSAHistory> {
                 let source_history = ssa_history.get_history_mut(ir.pointer);
                 source_history.push(SSAOp::set_c(0));
             }
+            IROp::MovesAndSetZero(dests) => {
+                let source_version = PointerVersion {
+                    ptr: ir.pointer,
+                    version: match ssa_history.get_history(ir.pointer) {
+                        Some(history) => history.len() - 1,
+                        None => 0,
+                    },
+                };
+                for (dest_ptr, is_pos) in dests {
+                    let dest_history = ssa_history.get_history_mut(*dest_ptr);
+                    if *is_pos {
+                        dest_history.push(SSAOp::add_pp(PointerVersion {
+                            ptr: *dest_ptr,
+                            version: dest_history.len() - 1,
+                        }, source_version));
+                    } else {
+                        dest_history.push(SSAOp::sub_pp(PointerVersion {
+                            ptr: *dest_ptr,
+                            version: dest_history.len() - 1,
+                        }, source_version));
+                    }
+                }
+                let source_history = ssa_history.get_history_mut(ir.pointer);
+                source_history.push(SSAOp::set_c(0));
+            }
             _ => {
                 return None;
             }

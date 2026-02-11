@@ -5,6 +5,7 @@ use clap::Parser;
 
 mod memory;
 mod ir;
+mod ssa;
 mod cisc;
 mod trace;
 mod range;
@@ -57,15 +58,15 @@ fn main() {
             }
 
             #[cfg(feature = "debug")] {
-                // use crate::ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
-                /* let noend_ir = &ir[0..ir.len()-1];
+                use crate::ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
+                let noend_ir = &ir[0..ir.len()-1];
                 let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());
                 let one_round = inline_ssa_history(&raw);
                 let two_round = inline_ssa_history(&one_round);
                 fs::write("./box/ssa", format!("{:?}", raw)).expect("failed to write");
                 fs::write("./box/ssa_opt1", format!("{:?}", one_round)).expect("failed to write");
                 fs::write("./box/ssa_opt2", format!("{:?}", two_round)).expect("failed to write");
-                fs::write("./box/eval_order", format!("{:?}", resolve_eval_order(&two_round))).expect("failed to write"); */
+                fs::write("./box/eval_order", format!("{:?}", resolve_eval_order(&two_round))).expect("failed to write");
             }
         }
     }
