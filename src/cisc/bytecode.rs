@@ -171,7 +171,15 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         }
                     }
                     IROp::MovesAndSetZero(dests) => {
-                        if let [(p1, f1), (p2, f2)] = dests.iter().as_slice() {
+                        let dests_slice: &[(isize, bool)] = dests.iter().as_slice();
+                        if let [(ptr, flag)] = dests_slice {
+                            let to = i16::try_from(ptr.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
+
+                            match *flag {
+                                true  => bytecodes.push(Bytecode::SingleMoveAdd { delta, to }),
+                                false => bytecodes.push(Bytecode::SingleMoveSub { delta, to }),
+                            };
+                        } else if let [(p1, f1), (p2, f2)] = dests_slice {
                             let delta1 = i16::try_from(p1.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                             let delta2 = i16::try_from(p2.wrapping_sub(last_ptr)).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
 
@@ -198,18 +206,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                                 }
                             }
                         }
-                    }
-                    IROp::MoveAdd(dest) => {
-                        bytecodes.push(Bytecode::SingleMoveAdd {
-                            delta,
-                            to: i16::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                        });
-                    }
-                    IROp::MoveSub(dest) => {
-                        bytecodes.push(Bytecode::SingleMoveSub {
-                            delta,
-                            to: i16::try_from(dest - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?,
-                        });
                     }
 
                     IROp::In => {
