@@ -11,44 +11,60 @@ pub fn negative_is_out_of_range(range: u16, pointer: usize) -> bool {
     pointer < (range as usize)
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Range {
+    positive: isize,
+    negative: isize,
+}
+impl Range {
+    pub fn subscribe(&mut self, pointer: isize) {
+        self.positive = max(self.positive, pointer);
+        self.negative = min(self.negative, pointer);
+    }
+    pub fn subscribe_from_range(&mut self, range: Range) {
+        self.positive = max(self.positive, range.positive);
+        self.negative = min(self.negative, range.negative);
+    }
+}
 #[derive(Debug)]
 struct RSMapElement {
     pointer: isize,
-    positive: isize,
-    negative: isize,
+    range: Range,
 }
 #[derive(Debug)]
 struct InternalRangeState {
     map: HashMap<usize, RSMapElement>,
-    curr_positive: isize,
-    curr_negative: isize,
+    scope_stack: Vec<Range>,
+    curr: Range,
 }
 impl InternalRangeState {
     pub fn new() -> InternalRangeState {
         InternalRangeState {
             map: HashMap::new(),
-            curr_positive: isize::MIN,
-            curr_negative: isize::MAX,
+            scope_stack: vec![],
+            curr: Range { positive: isize::MIN, negative: isize::MAX },
         }
     }
     pub fn subscribe(&mut self, pointer: isize) {
-        self.curr_positive = max(self.curr_positive, pointer);
-        self.curr_negative = min(self.curr_negative, pointer);
+        self.curr.subscribe(pointer);
     }
     pub fn insert(&mut self, ir_at: usize, pointer: isize) {
         self.map.insert(ir_at, RSMapElement {
             pointer,
-            positive: self.curr_positive,
-            negative: self.curr_negative
+            range: self.curr,
         });
-        self.curr_positive = pointer;
-        self.curr_negative = pointer;
+        self.curr = Range { positive: pointer, negative: pointer };
+    }
+    pub fn push_loopend(&mut self) {
+        self.scope_stack.push(self.curr);
+    }
+    pub fn pop_loopstart(&mut self) {
+        self.curr.subscribe_from_range(self.scope_stack.pop().unwrap());
     }
     pub fn apply_loop(&mut self, ir_at: usize, pointer: isize) {
         let ri = self.map.get_mut(&ir_at).unwrap();
         ri.pointer = pointer;
-        ri.positive = max(ri.positive, self.curr_positive);
-        ri.negative = min(ri.negative, self.curr_negative);
+        ri.range.subscribe_from_range(self.curr);
     }
 }
 
@@ -64,7 +80,7 @@ pub struct RangeInfo {
 }
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, positive, negative })| {
+        let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: Range { positive, negative } })| {
             let posr_raw = 65536 - (positive - pointer);
             let negr_raw = -(negative - pointer);
 
@@ -89,7 +105,7 @@ impl RangeInfo {
         }).collect();
         Ok(RangeInfo {
             map: HashMap::from_iter(map_arr?),
-            do_opt_first: !(internal_ri.curr_negative < 0) && !(internal_ri.curr_positive >= 65536),
+            do_opt_first: !(internal_ri.curr.negative < 0) && !(internal_ri.curr.positive >= 65536),
         })
     }
 }
@@ -98,6 +114,12 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
     let mut internal_ri = InternalRangeState::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
+        if let IROp::LoopEndWithOffset(..) = opcode {
+            internal_ri.push_loopend();
+        }
+        if let IROp::LoopEnd(..) = opcode {
+            internal_ri.push_loopend();
+        }
         internal_ri.subscribe(*pointer);
         match opcode {
             IROp::Shift(_step) => {
@@ -120,7 +142,8 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
                 internal_ri.subscribe(*dest);
             }
             IROp::LoopStart(end) => {
-                if let IROp::LoopEndWithOffset(_, _) = ir_nodes[*end].opcode {
+                internal_ri.pop_loopstart();
+                if let IROp::LoopEndWithOffset(..) = ir_nodes[*end].opcode {
                     internal_ri.apply_loop(*end, *pointer);
                 }
             }
