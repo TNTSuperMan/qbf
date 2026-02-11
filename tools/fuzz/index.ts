@@ -45,7 +45,6 @@ while (true) {
     const code = GenerateRandomBFCode(INPUT_MINLEN, INPUT_MAXLEN);
     const exec_result = execute({ code, timeout_cycles: MAX_STEPS });
     if (exec_result.type !== "timeout") {
-        stdout.write(".");
         const brainrot_process = spawn({
             cmd: [QBF_FILE, "/dev/stdin"],
             stdin: new Blob([code]),
@@ -54,8 +53,10 @@ while (true) {
         const race_res = await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)]);
         if (race_res === undefined) { // sleep(TIMEOUT_MS)の挙動
             brainrot_process.kill();
+            stdout.write("_");
             //await report(code, "timeout");
         } else {
+            stdout.write(".");
             const stderr = await brainrot_process.stderr.text();
             switch (race_res) {
                 case 0: // Expected behavior in fuzzing
