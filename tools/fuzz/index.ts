@@ -5,14 +5,23 @@ const MAX_STEPS = 1000;
 const TIMEOUT_MS = 100;
 const INPUT_MINLEN = 100;
 const INPUT_MAXLEN = 500;
+const PROB: [string, number][] = [
+    ["[", 3],
+    ["]", 3],
+    ["<", 2],
+    [">", 2],
+    ["+", 1],
+    ["-", 1],
+    [".", 1],
+];
 
-function _randombf(max: number) {
+function GenerateRandomBFCode(min: number, max: number) {
     let lv = 0;
     let code = "";
-    while (lv >= 0) {
-        if (code.length > max) {
-            code = "";
-            lv = 0;
+    while (lv >= 0 || code.length < min) {
+        if (code.length > (max-lv)) {
+            code += "]".repeat(lv);
+            return code;
         }
         switch (Math.floor(Math.random() * 7)) {
             case 0: code += "+"; break;
@@ -25,11 +34,6 @@ function _randombf(max: number) {
         }
     }
     return code.substring(0, code.length - 1);
-}
-function GenerateRandomBFCode(min: number, max: number): string {
-    let code = "";
-    while ((code = _randombf(max)).length < min);
-    return code;
 }
 const QBF_FILE = `target/${env.QBF_MODE ?? "debug"}/brainrot`;
 
