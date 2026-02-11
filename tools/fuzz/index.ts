@@ -53,9 +53,9 @@ while (true) {
         });
         const race_res = await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)]);
         const stderr = await brainrot_process.stderr.text();
-        if (!race_res) { // sleep(TIMEOUT_MS)の挙動
+        if (race_res === undefined) { // sleep(TIMEOUT_MS)の挙動
             brainrot_process.kill();
-            //await report(code, "timeout");
+            await report(code, "timeout");
         } else switch (race_res) {
             case 0: // Expected behavior in fuzzing
                 break;
