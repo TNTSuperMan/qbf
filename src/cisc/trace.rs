@@ -1,24 +1,24 @@
 use crate::cisc::vm::VM;
 
 #[cfg(feature = "debug")]
-use crate::{cisc::bytecode::NewBytecode, trace::OperationCountMap};
+use crate::{cisc::bytecode::Bytecode, trace::OperationCountMap};
 
 #[cfg(feature = "debug")]
-pub fn generate_bytecode_trace(bytecodes: &[NewBytecode], ocm: &OperationCountMap) -> String {
+pub fn generate_bytecode_trace(bytecodes: &[Bytecode], ocm: &OperationCountMap) -> String {
     let mut str = String::new();
     let mut lv: usize = 0;
 
     for (i, b) in bytecodes.iter().enumerate() {
         match b {
-            NewBytecode::JmpIfNotZero { .. } => lv -= 1,
-            NewBytecode::PositiveRangeCheckJNZ { .. } => lv -= 1,
-            NewBytecode::NegativeRangeCheckJNZ { .. } => lv -= 1,
-            NewBytecode::BothRangeCheckJNZ { .. } => lv -= 1,
+            Bytecode::JmpIfNotZero { .. } => lv -= 1,
+            Bytecode::PositiveRangeCheckJNZ { .. } => lv -= 1,
+            Bytecode::NegativeRangeCheckJNZ { .. } => lv -= 1,
+            Bytecode::BothRangeCheckJNZ { .. } => lv -= 1,
             _ => {}
         }
         str += &format!("{}\t{}\t{}{:?}\n", (ocm.deopt[i].wrapping_add(1) as f64).log2().floor(), (ocm.opt[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
         match b {
-            NewBytecode::JmpIfZero { .. } => lv += 1,
+            Bytecode::JmpIfZero { .. } => lv += 1,
             _ => {}
         }
     }

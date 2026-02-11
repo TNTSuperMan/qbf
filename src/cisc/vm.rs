@@ -1,7 +1,7 @@
-use crate::{cisc::bytecode::{NewBytecode, ir_to_bytecodes}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
+use crate::{cisc::bytecode::{Bytecode, ir_to_bytecodes}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
 
 pub struct VM {
-    pub insts: Box<[NewBytecode]>,
+    pub insts: Box<[Bytecode]>,
     pub memory: Memory,
     pub ocm: OperationCountMap,
     pub pc: usize,
@@ -31,8 +31,8 @@ pub struct UnsafeVM<'a> {
     pub inner: &'a mut VM,
     memory_at: *mut u8,
     pointer: *mut u8,
-    internal_insts_at: *mut NewBytecode,
-    internal_pc: *mut NewBytecode,
+    internal_insts_at: *mut Bytecode,
+    internal_pc: *mut Bytecode,
 }
 impl<'a> UnsafeVM<'a> {
     pub unsafe fn new(vm: &'a mut VM) -> UnsafeVM<'a> {
@@ -47,7 +47,7 @@ impl<'a> UnsafeVM<'a> {
         // SAFETY: 差分を求めるだけだから安全なはず
         unsafe { self.internal_pc.offset_from_unsigned(self.internal_insts_at) }
     }
-    pub unsafe fn get_op(&mut self) -> NewBytecode {
+    pub unsafe fn get_op(&mut self) -> Bytecode {
         #[cfg(feature = "debug")] {
             if self.get_pc() >= self.inner.insts.len() {
                 panic!("[UNSAFE] Runtime Error: Out of range insts");

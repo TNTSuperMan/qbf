@@ -1,6 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::{cisc::{bytecode::NewBytecode, internal::{InterpreterResult, Tier}, vm::VM}, range::{negative_is_out_of_range, positive_is_out_of_range}};
+use crate::{cisc::{bytecode::Bytecode, internal::{InterpreterResult, Tier}, vm::VM}, range::{negative_is_out_of_range, positive_is_out_of_range}};
 
 pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
@@ -19,57 +19,57 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
         println!("[TRACE] tier: Deopt ptr: {}, executing {}", vm.pointer, vm.pc);
         
         match bytecode {
-            NewBytecode::Breakpoint { delta } => {
+            Bytecode::Breakpoint { delta } => {
                 vm.step_ptr(delta as isize);
                 eprintln!("PC: {}, PTR: {}", vm.pc, vm.pointer);
             }
 
-            NewBytecode::SingleAdd { delta, val } => {
+            Bytecode::SingleAdd { delta, val } => {
                 vm.step_ptr(delta as isize);
                 vm.memory.add(vm.pointer, val)?;
             }
-            NewBytecode::SingleSet { delta, val } => {
+            Bytecode::SingleSet { delta, val } => {
                 vm.step_ptr(delta as isize);
                 vm.memory.set(vm.pointer, val)?;
             }
-            NewBytecode::AddAdd { delta1, val1, delta2, val2 } => {
+            Bytecode::AddAdd { delta1, val1, delta2, val2 } => {
                 vm.step_ptr(delta1 as isize);
                 vm.memory.add(vm.pointer, val1)?;
                 vm.step_ptr(delta2 as isize);
                 vm.memory.add(vm.pointer, val2)?;
             }
-            NewBytecode::AddSet { delta1, val1, delta2, val2 } => {
+            Bytecode::AddSet { delta1, val1, delta2, val2 } => {
                 vm.step_ptr(delta1 as isize);
                 vm.memory.add(vm.pointer, val1)?;
                 vm.step_ptr(delta2 as isize);
                 vm.memory.set(vm.pointer, val2)?;
             }
-            NewBytecode::SetAdd { delta1, val1, delta2, val2 } => {
+            Bytecode::SetAdd { delta1, val1, delta2, val2 } => {
                 vm.step_ptr(delta1 as isize);
                 vm.memory.set(vm.pointer, val1)?;
                 vm.step_ptr(delta2 as isize);
                 vm.memory.add(vm.pointer, val2)?;
             }
-            NewBytecode::SetSet { delta1, val1, delta2, val2 } => {
+            Bytecode::SetSet { delta1, val1, delta2, val2 } => {
                 vm.step_ptr(delta1 as isize);
                 vm.memory.set(vm.pointer, val1)?;
                 vm.step_ptr(delta2 as isize);
                 vm.memory.set(vm.pointer, val2)?;
             }
 
-            NewBytecode::BothRangeCheck { positive, negative } => {
+            Bytecode::BothRangeCheck { positive, negative } => {
                 if !positive_is_out_of_range(positive, vm.pointer) && !negative_is_out_of_range(negative, vm.pointer) {
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
-            NewBytecode::Shift { delta, step } => {
+            Bytecode::Shift { delta, step } => {
                 vm.step_ptr(delta as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
             }
-            NewBytecode::ShiftP { delta, step, range } => {
+            Bytecode::ShiftP { delta, step, range } => {
                 vm.step_ptr(delta as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -79,7 +79,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
-            NewBytecode::ShiftN { delta, step, range } => {
+            Bytecode::ShiftN { delta, step, range } => {
                 vm.step_ptr(delta as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -89,7 +89,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
-            NewBytecode::ShiftAdd { delta1, step, delta2, val } => {
+            Bytecode::ShiftAdd { delta1, step, delta2, val } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -97,7 +97,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta2 as isize);
                 vm.memory.add(vm.pointer, val)?;
             }
-            NewBytecode::ShiftAddP { delta1, step, delta2, val, range } => {
+            Bytecode::ShiftAddP { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -111,7 +111,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta2 as isize);
                 vm.memory.add(vm.pointer, val)?;
             }
-            NewBytecode::ShiftAddN { delta1, step, delta2, val, range } => {
+            Bytecode::ShiftAddN { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -125,7 +125,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta2 as isize);
                 vm.memory.add(vm.pointer, val)?;
             }
-            NewBytecode::ShiftSet { delta1, step, delta2, val } => {
+            Bytecode::ShiftSet { delta1, step, delta2, val } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -133,7 +133,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta2 as isize);
                 vm.memory.set(vm.pointer, val)?;
             }
-            NewBytecode::ShiftSetP { delta1, step, delta2, val, range } => {
+            Bytecode::ShiftSetP { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -147,7 +147,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.step_ptr(delta2 as isize);
                 vm.memory.set(vm.pointer, val)?;
             }
-            NewBytecode::ShiftSetN { delta1, step, delta2, val, range } => {
+            Bytecode::ShiftSetN { delta1, step, delta2, val, range } => {
                 vm.step_ptr(delta1 as isize);
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
@@ -162,7 +162,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.memory.set(vm.pointer, val)?;
             }
 
-            NewBytecode::MulStart { delta, jz_abs } => {
+            Bytecode::MulStart { delta, jz_abs } => {
                 vm.step_ptr(delta as isize);
                 let val = vm.memory.get(vm.pointer)?;
                 if val == 0 {
@@ -173,11 +173,11 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.memory.set(vm.pointer, 0)?;
                 }
             }
-            NewBytecode::Mul { delta, val } => {
+            Bytecode::Mul { delta, val } => {
                 vm.memory.add(vm.pointer.wrapping_add_signed(delta as isize), mul_val.wrapping_mul(val))?;
             }
 
-            NewBytecode::SingleMoveAdd { delta, to } => {
+            Bytecode::SingleMoveAdd { delta, to } => {
                 vm.step_ptr(delta as isize);
                 let v = vm.memory.get(vm.pointer)?;
                 if v != 0 {
@@ -185,7 +185,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.memory.add(vm.pointer.wrapping_add_signed(to as isize), v)?;
                 }
             }
-            NewBytecode::SingleMoveSub { delta, to } => {
+            Bytecode::SingleMoveSub { delta, to } => {
                 vm.step_ptr(delta as isize);
                 let v = vm.memory.get(vm.pointer)?;
                 if v != 0 {
@@ -194,7 +194,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 }
             }
 
-            NewBytecode::DoubleMoveAddAdd { delta, to1, to2 } => {
+            Bytecode::DoubleMoveAddAdd { delta, to1, to2 } => {
                 vm.step_ptr(delta as isize);
                 let v = vm.memory.get(vm.pointer)?;
                 if v != 0 {
@@ -203,7 +203,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.memory.set(vm.pointer, 0)?;
                 }
             }
-            NewBytecode::DoubleMoveAddSub { delta, to1, to2 } => {
+            Bytecode::DoubleMoveAddSub { delta, to1, to2 } => {
                 vm.step_ptr(delta as isize);
                 let v = vm.memory.get(vm.pointer)?;
                 if v != 0 {
@@ -212,7 +212,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.memory.set(vm.pointer, 0)?;
                 }
             }
-            NewBytecode::DoubleMoveSubAdd { delta, to1, to2 } => {
+            Bytecode::DoubleMoveSubAdd { delta, to1, to2 } => {
                 vm.step_ptr(delta as isize);
                 let v = vm.memory.get(vm.pointer)?;
                 if v != 0 {
@@ -221,7 +221,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.memory.set(vm.pointer, 0)?;
                 }
             }
-            NewBytecode::DoubleMoveSubSub { delta, to1, to2 } => {
+            Bytecode::DoubleMoveSubSub { delta, to1, to2 } => {
                 vm.step_ptr(delta as isize);
                 let v = vm.memory.get(vm.pointer)?;
                 if v != 0 {
@@ -231,7 +231,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 }
             }
 
-            NewBytecode::MoveStart { delta, jz_abs } => {
+            Bytecode::MoveStart { delta, jz_abs } => {
                 vm.step_ptr(delta as isize);
                 let val = vm.memory.get(vm.pointer)?;
                 if val == 0 {
@@ -242,21 +242,21 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     vm.memory.set(vm.pointer, 0)?;
                 }
             }
-            NewBytecode::MoveAdd { delta } => {
+            Bytecode::MoveAdd { delta } => {
                 vm.memory.add(vm.pointer.wrapping_add_signed(delta as isize), mul_val)?;
             }
-            NewBytecode::MoveSub { delta } => {
+            Bytecode::MoveSub { delta } => {
                 vm.memory.sub(vm.pointer.wrapping_add_signed(delta as isize), mul_val)?;
             }
 
-            NewBytecode::In { delta } => {
+            Bytecode::In { delta } => {
                 vm.step_ptr(delta as isize);
                 match stdin.read_exact(&mut stdin_buf) {
                     Ok(_) => vm.memory.set(vm.pointer, stdin_buf[0])?,
                     Err(_) => vm.memory.set(vm.pointer, 0)?,
                 }
             }
-            NewBytecode::Out { delta } => {
+            Bytecode::Out { delta } => {
                 vm.step_ptr(delta as isize);
                 stdout.write(&[vm.memory.get(vm.pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
                 if vm.flush {
@@ -264,21 +264,21 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 }
             }
 
-            NewBytecode::JmpIfZero { delta, addr_abs } => {
+            Bytecode::JmpIfZero { delta, addr_abs } => {
                 vm.step_ptr(delta as isize);
                 if vm.memory.get(vm.pointer)? == 0 {
                     vm.pc = addr_abs as usize;
                     continue;
                 }
             }
-            NewBytecode::JmpIfNotZero { delta, addr_abs } => {
+            Bytecode::JmpIfNotZero { delta, addr_abs } => {
                 vm.step_ptr(delta as isize);
                 if vm.memory.get(vm.pointer)? != 0 {
                     vm.pc = addr_abs as usize;
                     continue;
                 }
             }
-            NewBytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
+            Bytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
                 if !positive_is_out_of_range(range, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
@@ -293,7 +293,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     continue;
                 }
             }
-            NewBytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
+            Bytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
                 if !negative_is_out_of_range(range, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
@@ -308,7 +308,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     continue;
                 }
             }
-            NewBytecode::BothRangeCheckJNZ { delta, addr_back, positive, negative } => {
+            Bytecode::BothRangeCheckJNZ { delta, addr_back, positive, negative } => {
                 vm.step_ptr(delta as isize);
                 if !positive_is_out_of_range(positive, vm.pointer) && !negative_is_out_of_range(negative, vm.pointer) {
                     if vm.memory.get(vm.pointer)? != 0 {
@@ -324,7 +324,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 }
             }
 
-            NewBytecode::End { delta } => {
+            Bytecode::End { delta } => {
                 vm.step_ptr(delta as isize);
                 return Ok(InterpreterResult::End);
             }
