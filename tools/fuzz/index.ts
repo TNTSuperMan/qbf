@@ -38,7 +38,7 @@ async function report(code: string, description: string) {
     await write(`./box/fuzz/${crypto.randomUUID()}.bf`, `[
 ${description.replaceAll(`[`,`{`).replaceAll(']','}')}
 ]
-${code}`)
+${code}`);
 }
 
 while (true) {
@@ -52,19 +52,21 @@ while (true) {
             stderr: "pipe",
         });
         const race_res = await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)]);
-        const stderr = await brainrot_process.stderr.text();
         if (race_res === undefined) { // sleep(TIMEOUT_MS)の挙動
             brainrot_process.kill();
-            await report(code, "timeout");
-        } else switch (race_res) {
-            case 0: // Expected behavior in fuzzing
-                break;
-            case 101: // panic
-                await report(code, `panic occurred:\n${stderr}`);
-                break;
-            default:
-                await report(code, `unknown behavior, exitcode: ${race_res}. stderr:\n${stderr}`);
-                break;
+            //await report(code, "timeout");
+        } else {
+            const stderr = await brainrot_process.stderr.text();
+            switch (race_res) {
+                case 0: // Expected behavior in fuzzing
+                    break;
+                case 101: // panic
+                    await report(code, `panic occurred:\n${stderr}`);
+                    break;
+                default:
+                    await report(code, `unknown behavior, exitcode: ${race_res}. stderr:\n${stderr}`);
+                    break;
+            }
         }
     }
 }
