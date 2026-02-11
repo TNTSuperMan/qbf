@@ -58,13 +58,8 @@ impl InternalRangeState {
     pub fn push_loopend(&mut self) {
         self.scope_stack.push(self.curr);
     }
-    pub fn pop_loopstart(&mut self, ir_at: usize, pointer: isize) {
-        let mut scope = self.scope_stack.pop().unwrap();
-        scope.subscribe(pointer);
-        self.map.insert(ir_at, RSMapElement {
-            pointer,
-            range: scope,
-        });
+    pub fn pop_loopstart(&mut self) {
+        self.curr.subscribe_from_range(self.scope_stack.pop().unwrap());
     }
     pub fn apply_loop(&mut self, ir_at: usize, pointer: isize) {
         let ri = self.map.get_mut(&ir_at).unwrap();
@@ -147,7 +142,7 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
                 internal_ri.subscribe(*dest);
             }
             IROp::LoopStart(end) => {
-                internal_ri.pop_loopstart(i, *pointer);
+                internal_ri.pop_loopstart();
                 if let IROp::LoopEndWithOffset(..) = ir_nodes[*end].opcode {
                     internal_ri.apply_loop(*end, *pointer);
                 }
