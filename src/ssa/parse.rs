@@ -27,7 +27,7 @@ pub fn build_ssa_from_ir(ir_nodes: &[IR]) -> Option<PointerSSAHistory> {
                 for (dest_ptr, dest_val) in dests {
                     let dest_history = ssa_history.get_history_mut(*dest_ptr);
                     if *dest_val == 1 {
-                        dest_history.push(SSAOp::mul_pp(PointerVersion {
+                        dest_history.push(SSAOp::add_pp(PointerVersion {
                             ptr: *dest_ptr,
                             version: dest_history.len() - 1,
                         }, source_version));

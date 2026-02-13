@@ -20,7 +20,6 @@ pub fn detect_ssa_loop(history: &PointerSSAHistory) -> Option<(isize, PointerSSA
                     SSAOp::mul_pc(PointerVersion { ptr, .. }, ..) => *ptr == loop_ptr,
                     SSAOp::add_pp(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
                     SSAOp::sub_pp(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
-                    SSAOp::mul_pp(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
 
                     SSAOp::mul_add(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }, ..) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
                 });

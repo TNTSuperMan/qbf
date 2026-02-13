@@ -68,7 +68,6 @@ pub enum SSAOp {
     mul_pc(PointerVersion, u8),
     add_pp(PointerVersion, PointerVersion),
     sub_pp(PointerVersion, PointerVersion),
-    mul_pp(PointerVersion, PointerVersion),
 
     mul_add(PointerVersion, PointerVersion, u8),
 }
@@ -84,7 +83,6 @@ impl Debug for SSAOp {
             SSAOp::mul_pc(dest, val) => f.write_str(&format!("mul_pc {:?} * {}", dest, val)),
             SSAOp::add_pp(to, dest) => f.write_str(&format!("add_pp {:?} + {:?}", to, dest)),
             SSAOp::sub_pp(to, dest) => f.write_str(&format!("sub_pp {:?} - {:?}", to, dest)),
-            SSAOp::mul_pp(to, dest) => f.write_str(&format!("mul_pp {:?} * {:?}", to, dest)),
 
             SSAOp::mul_add(from, dest, val) => f.write_str(&format!("mul_add {:?} + {:?} * {}", from, dest, val)),
         }?;
