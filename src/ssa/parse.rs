@@ -26,10 +26,17 @@ pub fn build_ssa_from_ir(ir_nodes: &[IR]) -> Option<PointerSSAHistory> {
                 };
                 for (dest_ptr, dest_val) in dests {
                     let dest_history = ssa_history.get_history_mut(*dest_ptr);
-                    dest_history.push(SSAOp::mul_add(PointerVersion {
-                        ptr: *dest_ptr,
-                        version: dest_history.len() - 1,
-                    }, source_version, *dest_val));
+                    if *dest_val == 1 {
+                        dest_history.push(SSAOp::mul_pp(PointerVersion {
+                            ptr: *dest_ptr,
+                            version: dest_history.len() - 1,
+                        }, source_version));
+                    } else {
+                        dest_history.push(SSAOp::mul_add(PointerVersion {
+                            ptr: *dest_ptr,
+                            version: dest_history.len() - 1,
+                        }, source_version, *dest_val));
+                    }
                 }
                 let source_history = ssa_history.get_history_mut(ir.pointer);
                 source_history.push(SSAOp::set_c(0));

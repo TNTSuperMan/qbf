@@ -14,13 +14,13 @@ pub fn detect_ssa_loop(history: &PointerSSAHistory) -> Option<(isize, PointerSSA
                 let use_loop_el = h.iter().any(|op| match op {
                     SSAOp::raw(ptr) => *ptr == loop_ptr,
                     SSAOp::set_c(..) => false,
-                    SSAOp::set_p(PointerVersion { ptr, .. }) => *ptr == loop_ptr,
                     SSAOp::add_pc(PointerVersion { ptr, .. }, ..) => *ptr == loop_ptr,
                     SSAOp::sub_pc(PointerVersion { ptr, .. }, ..) => *ptr == loop_ptr,
-                    SSAOp::sub_cp(_, PointerVersion { ptr, .. }) => *ptr == loop_ptr,
+                    SSAOp::sub_cp(_,  PointerVersion { ptr, .. }) => *ptr == loop_ptr,
+                    SSAOp::mul_pc(PointerVersion { ptr, .. }, ..) => *ptr == loop_ptr,
                     SSAOp::add_pp(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
                     SSAOp::sub_pp(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
-                    SSAOp::mul_pc(PointerVersion { ptr, .. }, ..) => *ptr == loop_ptr,
+                    SSAOp::mul_pp(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
 
                     SSAOp::mul_add(PointerVersion { ptr: ptr1, .. }, PointerVersion { ptr: ptr2, .. }, ..) => *ptr1 == loop_ptr || *ptr2 == loop_ptr,
                 });

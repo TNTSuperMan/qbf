@@ -27,13 +27,13 @@ pub fn resolve_eval_order(history: &PointerSSAHistory) -> Vec<PointerVersion> {
                 match history.get_op(ver).unwrap() {
                     SSAOp::raw(_ptr) => (),
                     SSAOp::set_c(_val) => (),
-                    SSAOp::set_p(ver) => schedule.push(Schedule::Visit(ver)),
                     SSAOp::add_pc(ver, _val) => schedule.push(Schedule::Visit(ver)),
                     SSAOp::sub_pc(ver, _val) => schedule.push(Schedule::Visit(ver)),
                     SSAOp::sub_cp(_val, ver) => schedule.push(Schedule::Visit(ver)),
+                    SSAOp::mul_pc(ver, _val) => schedule.push(Schedule::Visit(ver)),
                     SSAOp::add_pp(ver, ver2) => { schedule.push(Schedule::Visit(ver)); schedule.push(Schedule::Visit(ver2)); },
                     SSAOp::sub_pp(ver, ver2) => { schedule.push(Schedule::Visit(ver)); schedule.push(Schedule::Visit(ver2)); },
-                    SSAOp::mul_pc(ver, _val) => schedule.push(Schedule::Visit(ver)),
+                    SSAOp::mul_pp(ver, ver2) => { schedule.push(Schedule::Visit(ver)); schedule.push(Schedule::Visit(ver2)); },
 
                     SSAOp::mul_add(from, dest, _val) => { schedule.push(Schedule::Visit(from)); schedule.push(Schedule::Visit(dest)); },
                 }
