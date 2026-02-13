@@ -2,15 +2,6 @@ use std::{collections::HashMap, ops::{Range, RangeFrom, RangeInclusive, RangeTo}
 
 use crate::ir::{IR, IROp};
 
-#[inline(always)]
-pub fn positive_is_out_of_range(range: u16, pointer: usize) -> bool {
-    pointer >= (range as usize)
-}
-#[inline(always)]
-pub fn negative_is_out_of_range(range: u16, pointer: usize) -> bool {
-    pointer < (range as usize)
-}
-
 fn extend_ri_pointer(range: &RangeInclusive<isize>, pointer: isize) -> RangeInclusive<isize> {
     return (*range.start()).min(pointer)..=(*range.end()).max(pointer);
 }
