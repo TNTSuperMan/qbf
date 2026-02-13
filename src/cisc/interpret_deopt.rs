@@ -1,6 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::{cisc::{bytecode::Bytecode, internal::{InterpreterResult, Tier}, vm::VM}, range::{negative_is_out_of_range, positive_is_out_of_range}};
+use crate::{cisc::{bytecode::Bytecode, internal::{InterpreterResult, Tier}, vm::VM}};
 
 pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
@@ -57,8 +57,8 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 vm.memory.set(vm.pointer, val2)?;
             }
 
-            Bytecode::BothRangeCheck { positive, negative } => {
-                if !positive_is_out_of_range(positive, vm.pointer) && !negative_is_out_of_range(negative, vm.pointer) {
+            Bytecode::BothRangeCheck { range } => {
+                if range.contains(&(vm.pointer as u16)) {
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
@@ -74,7 +74,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !positive_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
@@ -84,7 +84,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !negative_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     vm.pc += 1;
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
@@ -102,7 +102,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !positive_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.add(vm.pointer, val)?;
                     vm.pc += 1;
@@ -116,7 +116,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !negative_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.add(vm.pointer, val)?;
                     vm.pc += 1;
@@ -138,7 +138,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !positive_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.set(vm.pointer, val)?;
                     vm.pc += 1;
@@ -152,7 +152,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                 while vm.memory.get(vm.pointer)? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if !negative_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.memory.set(vm.pointer, val)?;
                     vm.pc += 1;
@@ -280,7 +280,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
             Bytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
-                if !positive_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     if vm.memory.get(vm.pointer)? != 0 {
                         vm.pc -= addr_back as usize;
                     } else {
@@ -295,7 +295,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             }
             Bytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
-                if !negative_is_out_of_range(range, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     if vm.memory.get(vm.pointer)? != 0 {
                         vm.pc -= addr_back as usize;
                     } else {
@@ -308,9 +308,9 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
                     continue;
                 }
             }
-            Bytecode::BothRangeCheckJNZ { delta, addr_back, positive, negative } => {
+            Bytecode::BothRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
-                if !positive_is_out_of_range(positive, vm.pointer) && !negative_is_out_of_range(negative, vm.pointer) {
+                if range.contains(&(vm.pointer as u16)) {
                     if vm.memory.get(vm.pointer)? != 0 {
                         vm.pc -= addr_back as usize;
                     } else {

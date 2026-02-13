@@ -1,7 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
 use crate::cisc::{bytecode::Bytecode, internal::{InterpreterResult, Tier}, vm::UnsafeVM};
-use crate::range::{negative_is_out_of_range, positive_is_out_of_range};
 
 pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
@@ -57,9 +56,8 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 vm.set(val2);
             }
 
-            Bytecode::BothRangeCheck { positive, negative } => {
-                let ptr = vm.get_ptr();
-                if positive_is_out_of_range(positive, ptr) || negative_is_out_of_range(negative, ptr) {
+            Bytecode::BothRangeCheck { range } => {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -75,7 +73,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if positive_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -85,7 +83,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if negative_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     vm.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -103,7 +101,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if positive_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.add(vm.get_ptr(), val)?;
                     vm.jump_one();
@@ -117,7 +115,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if negative_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.add(vm.get_ptr(), val)?;
                     vm.jump_one();
@@ -139,7 +137,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if positive_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.set(vm.get_ptr(), val)?;
                     vm.jump_one();
@@ -153,7 +151,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                 while vm.inner.memory.get(vm.get_ptr())? != 0 {
                     vm.step_ptr(step as isize);
                 }
-                if negative_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     vm.step_ptr(delta2 as isize);
                     vm.inner.memory.set(vm.get_ptr(), val)?;
                     vm.jump_one();
@@ -267,7 +265,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             Bytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
-                if positive_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     if vm.inner.memory.get(vm.get_ptr())? != 0 {
                         vm.jump_back(addr_back);
                     } else {
@@ -282,7 +280,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
             }
             Bytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
-                if negative_is_out_of_range(range, vm.get_ptr()) {
+                if !range.contains(&(vm.get_ptr() as u16)) {
                     if vm.inner.memory.get(vm.get_ptr())? != 0 {
                         vm.jump_back(addr_back);
                     } else {
@@ -295,11 +293,11 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM) -> Result<InterpreterResult, String> {
                     continue;
                 }
             }
-            Bytecode::BothRangeCheckJNZ { delta, addr_back, positive, negative } => {
+            Bytecode::BothRangeCheckJNZ { delta, addr_back, range } => {
                 vm.step_ptr(delta as isize);
                 let ptr = vm.get_ptr();
-                if positive_is_out_of_range(positive, ptr) || negative_is_out_of_range(negative, ptr) {
-                    if vm.inner.memory.get(vm.get_ptr())? != 0 {
+                if !range.contains(&(ptr as u16)) {
+                    if vm.inner.memory.get(ptr)? != 0 {
                         vm.jump_back(addr_back);
                     } else {
                         vm.jump_one();

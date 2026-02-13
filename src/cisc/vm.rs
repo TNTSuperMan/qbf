@@ -47,13 +47,13 @@ impl<'a> UnsafeVM<'a> {
         // SAFETY: 差分を求めるだけだから安全なはず
         unsafe { self.internal_pc.offset_from_unsigned(self.internal_insts_at) }
     }
-    pub unsafe fn get_op(&mut self) -> Bytecode {
+    pub unsafe fn get_op(&mut self) -> &Bytecode {
         #[cfg(feature = "debug")] {
             if self.get_pc() >= self.inner.insts.len() {
                 panic!("[UNSAFE] Runtime Error: Out of range insts");
             }
         }
-        *self.internal_pc
+        &*self.internal_pc
     }
     pub unsafe fn jump_abs(&mut self, to: u32) {
         self.internal_pc = self.internal_insts_at.add(to as usize);
