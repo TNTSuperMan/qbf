@@ -1,7 +1,7 @@
-use crate::{cisc::bytecode::{Bytecode, ir_to_bytecodes}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
+use crate::{cisc::bytecode::Bytecode, memory::Memory, trace::OperationCountMap};
 
-pub struct VM {
-    pub insts: Box<[Bytecode]>,
+pub struct VM<'a> {
+    pub insts: &'a [Bytecode],
     pub memory: Memory,
     pub ocm: OperationCountMap,
     pub pc: usize,
@@ -9,12 +9,11 @@ pub struct VM {
     pub flush: bool,
 }
 
-impl VM {
-    pub fn new(ir: &[IR], range_info: &RangeInfo, flush: bool) -> Result<VM, String> {
-        let bytecodes = ir_to_bytecodes(ir, range_info)?;
+impl<'a> VM<'a> {
+    pub fn new(bytecodes: &'a [Bytecode], flush: bool) -> Result<VM<'a>, String> {
         let ocm = OperationCountMap::new(bytecodes.len());
         Ok(VM {
-            insts: bytecodes.into_boxed_slice(),
+            insts: bytecodes,
             memory: Memory::new(),
             ocm,
             pc: 0,
@@ -27,18 +26,18 @@ impl VM {
     }
 }
 
-pub struct UnsafeVM<'a> {
-    pub inner: &'a mut VM,
+pub struct UnsafeVM<'a, 'b> {
+    pub inner: &'b mut VM<'a>,
     memory_at: *mut u8,
     pointer: *mut u8,
-    internal_insts_at: *mut Bytecode,
-    internal_pc: *mut Bytecode,
+    internal_insts_at: *const Bytecode,
+    internal_pc: *const Bytecode,
 }
-impl<'a> UnsafeVM<'a> {
-    pub unsafe fn new(vm: &'a mut VM) -> UnsafeVM<'a> {
+impl<'a, 'b> UnsafeVM<'a, 'b> {
+    pub unsafe fn new(vm: &'b mut VM<'a>) -> UnsafeVM<'a, 'b> {
         let memory_at = vm.memory.0.as_mut_ptr();
         let pointer = memory_at.add(vm.pointer);
-        let internal_insts_at = vm.insts.as_mut_ptr();
+        let internal_insts_at = vm.insts.as_ptr();
         let internal_pc = internal_insts_at.add(vm.pc);
         UnsafeVM { inner: vm, memory_at, pointer, internal_insts_at, internal_pc }
     }
@@ -114,7 +113,7 @@ impl<'a> UnsafeVM<'a> {
         *p = (*p).wrapping_sub(value);
     }
 }
-impl<'a> Drop for UnsafeVM<'a> {
+impl<'a, 'b> Drop for UnsafeVM<'a, 'b> {
     fn drop(&mut self) {
         self.inner.pointer = self.get_ptr();
         self.inner.pc = self.get_pc();
