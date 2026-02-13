@@ -1,4 +1,4 @@
-use std::{cmp::{max, min}, collections::HashMap};
+use std::{collections::HashMap, ops::{Range, RangeFrom, RangeInclusive, RangeTo}};
 
 use crate::ir::{IR, IROp};
 
@@ -11,101 +11,92 @@ pub fn negative_is_out_of_range(range: u16, pointer: usize) -> bool {
     pointer < (range as usize)
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Range {
-    positive: isize,
-    negative: isize,
+fn extend_ri_pointer(range: &RangeInclusive<isize>, pointer: isize) -> RangeInclusive<isize> {
+    return (*range.start()).min(pointer)..=(*range.end()).max(pointer);
 }
-impl Range {
-    pub fn subscribe(&mut self, pointer: isize) {
-        self.positive = max(self.positive, pointer);
-        self.negative = min(self.negative, pointer);
-    }
-    pub fn subscribe_from_range(&mut self, range: Range) {
-        self.positive = max(self.positive, range.positive);
-        self.negative = min(self.negative, range.negative);
-    }
+fn extend_ri_range(range1: &RangeInclusive<isize>, range2: &RangeInclusive<isize>) -> RangeInclusive<isize> {
+    return (*range1.start()).min(*range2.start())..=(*range1.end()).max(*range2.end());
 }
+
 #[derive(Debug)]
 struct RSMapElement {
     pointer: isize,
-    range: Range,
+    range: RangeInclusive<isize>,
 }
 #[derive(Debug)]
 struct InternalRangeState {
     map: HashMap<usize, RSMapElement>,
-    scope_stack: Vec<Range>,
-    curr: Range,
+    scope_stack: Vec<RangeInclusive<isize>>,
+    curr: RangeInclusive<isize>,
 }
 impl InternalRangeState {
     pub fn new() -> InternalRangeState {
         InternalRangeState {
             map: HashMap::new(),
             scope_stack: vec![],
-            curr: Range { positive: isize::MIN, negative: isize::MAX },
+            curr: isize::MAX..=isize::MIN,
         }
     }
     pub fn subscribe(&mut self, pointer: isize) {
-        self.curr.subscribe(pointer);
+        self.curr = extend_ri_pointer(&self.curr, pointer);
     }
     pub fn insert(&mut self, ir_at: usize, pointer: isize) {
         self.map.insert(ir_at, RSMapElement {
             pointer,
-            range: self.curr,
+            range: self.curr.clone(),
         });
-        self.curr = Range { positive: pointer, negative: pointer };
+        self.curr = pointer..=pointer;
     }
     pub fn push_loopend(&mut self) {
-        self.scope_stack.push(self.curr);
+        self.scope_stack.push(self.curr.clone());
     }
     pub fn pop_loopstart(&mut self) {
-        self.curr.subscribe_from_range(self.scope_stack.pop().unwrap());
+        self.curr = extend_ri_range(&self.curr, &self.scope_stack.pop().unwrap());
     }
     pub fn apply_loop(&mut self, ir_at: usize, pointer: isize) {
         let ri = self.map.get_mut(&ir_at).unwrap();
         ri.pointer = pointer;
-        ri.range.subscribe_from_range(self.curr);
+        ri.range = extend_ri_range(&ri.range, &self.curr);
     }
 }
 
-pub enum MemoryRange {
+pub enum MidRange {
     None,
-    Positive(u16), // deopt when ptr >= X
-    Negative(u16), // deopt when ptr < X
-    Both { positive: u16, negative: u16 },
+    Negative(RangeFrom<u16>), // deopt when ptr < X
+    Positive(RangeTo<u16>), // deopt when ptr >= X
+    Both(Range<u16>),
 }
 pub struct RangeInfo {
-    pub map: HashMap<usize, MemoryRange>,
+    pub map: HashMap<usize, MidRange>,
     pub do_opt_first: bool,
 }
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, MemoryRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: Range { positive, negative } })| {
-            let posr_raw = 65536 - (positive - pointer);
-            let negr_raw = -(negative - pointer);
+        let map_arr: Result<Vec<(usize, MidRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: ref range_raw })| {
+            let range = (-(range_raw.start() - pointer))..(65536 - (range_raw.end() - pointer));
 
-            match (pointer == positive, pointer == negative) {
+            match (range.start == 0, range.end == 65536) {
                 (false, false) => {
-                    let posr_val = u16::try_from(posr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
-                    let negr_val = u16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
-                    Ok((ir_at, MemoryRange::Both { positive: posr_val, negative: negr_val }))
+                    let start: u16 = range.start.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let end: u16 = range.end.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MidRange::Both(start..end)))
                 }
                 (false, true) => {
-                    let posr_val = u16::try_from(posr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
-                    Ok((ir_at, MemoryRange::Positive(posr_val)))
+                    let start: u16 = range.start.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MidRange::Negative(start..)))
                 }
                 (true, false) => {
-                    let negr_val = u16::try_from(negr_raw).map_err(|_| "OptimizationError: Pointer Range Overflow")?;
-                    Ok((ir_at, MemoryRange::Negative(negr_val)))
+                    let end: u16 = range.end.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    Ok((ir_at, MidRange::Positive(..end)))
                 }
                 (true, true) => {
-                    Ok((ir_at, MemoryRange::None))
+                    Ok((ir_at, MidRange::None))
                 }
             }
         }).collect();
         Ok(RangeInfo {
             map: HashMap::from_iter(map_arr?),
-            do_opt_first: !(internal_ri.curr.negative < 0) && !(internal_ri.curr.positive >= 65536),
+            do_opt_first: !(*internal_ri.curr.start() < 0) && !(*internal_ri.curr.end() >= 65536),
         })
     }
 }

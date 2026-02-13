@@ -1,10 +1,10 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::{Range, RangeFrom, RangeTo}};
 
-use crate::{ir::{IR, IROp}, range::{MemoryRange, RangeInfo}};
+use crate::{ir::{IR, IROp}, range::{MidRange, RangeInfo}};
 
 // メモ: jz ゼロ時ジャンプ jnz 非ゼロ時ジャンプ
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Bytecode {
     Breakpoint { delta: i16 },
 
@@ -15,16 +15,16 @@ pub enum Bytecode {
     SetAdd { delta1: i16, val1: u8, delta2: i16, val2: u8 },
     SetSet { delta1: i16, val1: u8, delta2: i16, val2: u8 },
 
-    BothRangeCheck { positive: u16, negative: u16 },
+    BothRangeCheck { range: Range<u16> },
     Shift  { delta: i16, step: i16 },
-    ShiftP { delta: i16, step: i16, range: u16 },
-    ShiftN { delta: i16, step: i16, range: u16 },
+    ShiftN { delta: i16, step: i16, range: RangeFrom<u16> },
+    ShiftP { delta: i16, step: i16, range: RangeTo<u16> },
     ShiftAdd  { delta1: i16, step: i8, delta2: i8, val: u8 },
-    ShiftAddP { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
-    ShiftAddN { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
+    ShiftAddN { delta1: i16, step: i8, delta2: i8, val: u8, range: RangeFrom<u16> },
+    ShiftAddP { delta1: i16, step: i8, delta2: i8, val: u8, range: RangeTo<u16> },
     ShiftSet  { delta1: i16, step: i8, delta2: i8, val: u8 },
-    ShiftSetP { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
-    ShiftSetN { delta1: i16, step: i8, delta2: i8, val: u8, range: u16 },
+    ShiftSetN { delta1: i16, step: i8, delta2: i8, val: u8, range: RangeFrom<u16> },
+    ShiftSetP { delta1: i16, step: i8, delta2: i8, val: u8, range: RangeTo<u16> },
 
     MulStart { delta: i16, jz_abs: u32 },
     Mul { delta: i16, val: u8 },
@@ -46,9 +46,9 @@ pub enum Bytecode {
 
     JmpIfZero { delta: i16, addr_abs: u32 },
     JmpIfNotZero { delta: i16, addr_abs: u32 },
-    PositiveRangeCheckJNZ { delta: i16, addr_back: u16, range: u16 },
-    NegativeRangeCheckJNZ { delta: i16, addr_back: u16, range: u16 },
-    BothRangeCheckJNZ { delta: i8, addr_back: u16, positive: u16, negative: u16 },
+    NegativeRangeCheckJNZ { delta: i16, addr_back: u16, range: RangeFrom<u16> },
+    PositiveRangeCheckJNZ { delta: i16, addr_back: u16, range: RangeTo<u16> },
+    BothRangeCheckJNZ { delta: i8, addr_back: u16, range: Range<u16> },
 
     End { delta: i16 },
 }
@@ -118,10 +118,10 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     }
 
                     IROp::Shift(step) => {
-                        let range = range_info.map.get(&i).unwrap();
-                        if let MemoryRange::Both { positive, negative } = range {
+                        let mid_range = range_info.map.get(&i).unwrap();
+                        if let MidRange::Both(range) = mid_range {
                             bytecodes.push(Bytecode::Shift { delta, step: *step as i16 });
-                            bytecodes.push(Bytecode::BothRangeCheck { positive: *positive, negative: *negative });
+                            bytecodes.push(Bytecode::BothRangeCheck { range: range.clone() });
                             i += 1;
                             continue;
                         }
@@ -130,11 +130,11 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
                                     let delta2 = i8::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
-                                    match range {
-                                        MemoryRange::None => bytecodes.push(Bytecode::ShiftAdd { delta1: delta, step: step_i8, delta2, val }),
-                                        MemoryRange::Positive(r) => bytecodes.push(Bytecode::ShiftAddP { delta1: delta, step: step_i8, delta2, val, range: *r }),
-                                        MemoryRange::Negative(r) => bytecodes.push(Bytecode::ShiftAddN { delta1: delta, step: step_i8, delta2, val, range: *r }),
-                                        MemoryRange::Both { positive: _, negative: _ } => { unreachable!(); /* 上でMemoryRange::Bothは処理済みのはず */ }
+                                    match mid_range {
+                                        MidRange::None => bytecodes.push(Bytecode::ShiftAdd { delta1: delta, step: step_i8, delta2, val }),
+                                        MidRange::Positive(range) => bytecodes.push(Bytecode::ShiftAddP { delta1: delta, step: step_i8, delta2, val, range: *range }),
+                                        MidRange::Negative(range) => bytecodes.push(Bytecode::ShiftAddN { delta1: delta, step: step_i8, delta2, val, range: range.clone() }),
+                                        MidRange::Both { .. } => { unreachable!(); /* 上でMemoryRange::Bothは処理済みのはず */ }
                                     }
                                     i += 2;
                                     continue;
@@ -142,11 +142,11 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                                 IR { opcode: IROp::Set(val), pointer: ptr } => {
                                     let delta2 = i8::try_from(ptr - last_ptr).map_err(|_| "Optimization Error: Pointer Delta Overflow")?;
                                     last_ptr = ptr;
-                                    match range {
-                                        MemoryRange::None => bytecodes.push(Bytecode::ShiftSet { delta1: delta, step: step_i8, delta2, val }),
-                                        MemoryRange::Positive(r) => bytecodes.push(Bytecode::ShiftSetP { delta1: delta, step: step_i8, delta2, val, range: *r }),
-                                        MemoryRange::Negative(r) => bytecodes.push(Bytecode::ShiftSetN { delta1: delta, step: step_i8, delta2, val, range: *r }),
-                                        MemoryRange::Both { positive: _, negative: _ } => { unreachable!(); /* 上でMemoryRange::Bothは処理済みのはず */ }
+                                    match mid_range {
+                                        MidRange::None => bytecodes.push(Bytecode::ShiftSet { delta1: delta, step: step_i8, delta2, val }),
+                                        MidRange::Positive(range) => bytecodes.push(Bytecode::ShiftSetP { delta1: delta, step: step_i8, delta2, val, range: *range }),
+                                        MidRange::Negative(range) => bytecodes.push(Bytecode::ShiftSetN { delta1: delta, step: step_i8, delta2, val, range: range.clone() }),
+                                        MidRange::Both { .. } => { unreachable!(); /* 上でMemoryRange::Bothは処理済みのはず */ }
                                     }
                                     i += 2;
                                     continue;
@@ -154,11 +154,11 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                                 _ => { /* 下のフローで処理 */ }
                             }
                         }
-                        match range {
-                            MemoryRange::None => bytecodes.push(Bytecode::Shift { delta, step: *step as i16 }),
-                            MemoryRange::Positive(r) => bytecodes.push(Bytecode::ShiftP { delta, step: *step as i16, range: *r }),
-                            MemoryRange::Negative(r) => bytecodes.push(Bytecode::ShiftN { delta, step: *step as i16, range: *r }),
-                            MemoryRange::Both { positive: _, negative: _ } => { unreachable!(); /* 上でMemoryRange::Bothは処理済みのはず */ }
+                        match mid_range {
+                            MidRange::None => bytecodes.push(Bytecode::Shift { delta, step: *step as i16 }),
+                            MidRange::Positive(range) => bytecodes.push(Bytecode::ShiftP { delta, step: *step as i16, range: *range }),
+                            MidRange::Negative(range) => bytecodes.push(Bytecode::ShiftN { delta, step: *step as i16, range: range.clone() }),
+                            MidRange::Both { .. } => { unreachable!(); /* 上でMemoryRange::Bothは処理済みのはず */ }
                         };
                     }
                     IROp::MulAndSetZero(dests) => {
@@ -245,10 +245,10 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         }
                         let subrel = end - start - 1;
                         match range {
-                            MemoryRange::None => bytecodes.push(Bytecode::JmpIfNotZero { delta, addr_abs: (start + 1) as u32 }),
-                            MemoryRange::Positive(r) => bytecodes.push(Bytecode::PositiveRangeCheckJNZ { delta, addr_back: subrel as u16, range: *r }),
-                            MemoryRange::Negative(r) => bytecodes.push(Bytecode::NegativeRangeCheckJNZ { delta, addr_back: subrel as u16, range: *r }),
-                            MemoryRange::Both { positive, negative } => bytecodes.push(Bytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr_back: subrel as u16, positive: *positive, negative: *negative }),
+                            MidRange::None => bytecodes.push(Bytecode::JmpIfNotZero { delta, addr_abs: (start + 1) as u32 }),
+                            MidRange::Positive(range) => bytecodes.push(Bytecode::PositiveRangeCheckJNZ { delta, addr_back: subrel as u16, range: *range }),
+                            MidRange::Negative(range) => bytecodes.push(Bytecode::NegativeRangeCheckJNZ { delta, addr_back: subrel as u16, range: range.clone() }),
+                            MidRange::Both(range) => bytecodes.push(Bytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr_back: subrel as u16, range: range.clone() }),
                         }
                     }
 
