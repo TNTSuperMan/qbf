@@ -9,14 +9,15 @@ pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, S
     let mut mul_val: u8 = 0;
     
     loop {
-        #[cfg(feature = "debug")] {
+        if cfg!(feature = "debug") {
             vm.ocm.deopt[vm.pc] += 1;
         }
 
         let bytecode = &insts[vm.pc];
         
-        #[cfg(feature = "trace")]
-        println!("[TRACE] tier: Deopt ptr: {}, executing {}", vm.pointer, vm.pc);
+        if cfg!(feature = "trace") {
+            println!("[TRACE] tier: Deopt ptr: {}, executing {}", vm.pointer, vm.pc);
+        }
         
         match bytecode {
             Bytecode::Breakpoint { delta } => {

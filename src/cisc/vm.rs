@@ -50,37 +50,37 @@ impl<'a> UnsafeVM<'a> {
         self.pointer = self.pointer.wrapping_add(delta as usize);
     }
     pub unsafe fn get(&self) -> u8 {
-        #[cfg(feature = "debug")] { self.rangecheck(0); }
+        if cfg!(feature = "debug") { self.rangecheck(0); }
         *self.pointer
     }
     pub unsafe fn set(&mut self, value: u8) {
-        #[cfg(feature = "debug")] { self.rangecheck(0); }
+        if cfg!(feature = "debug") { self.rangecheck(0); }
         *self.pointer = value;
     }
     pub unsafe fn add(&mut self, value: u8) {
-        #[cfg(feature = "debug")] { self.rangecheck(0); }
+        if cfg!(feature = "debug") { self.rangecheck(0); }
         *self.pointer = (*self.pointer).wrapping_add(value);
     }
     pub unsafe fn sub(&mut self, value: u8) {
-        #[cfg(feature = "debug")] { self.rangecheck(0); }
+        if cfg!(feature = "debug") { self.rangecheck(0); }
         *self.pointer = (*self.pointer).wrapping_sub(value);
     }
 
     pub unsafe fn get_with_offset(&self, offset: isize) -> u8 {
-        #[cfg(feature = "debug")] { self.rangecheck(offset); }
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
         *(self.pointer.wrapping_add(offset as usize))
     }
     pub unsafe fn set_with_offset(&mut self, offset: isize, value: u8) {
-        #[cfg(feature = "debug")] { self.rangecheck(offset); }
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
         *(self.pointer.wrapping_add(offset as usize)) = value;
     }
     pub unsafe fn add_with_offset(&mut self, offset: isize, value: u8) {
-        #[cfg(feature = "debug")] { self.rangecheck(offset); }
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
         let p = self.pointer.wrapping_add(offset as usize);
         *p = (*p).wrapping_add(value);
     }
     pub unsafe fn sub_with_offset(&mut self, offset: isize, value: u8) {
-        #[cfg(feature = "debug")] { self.rangecheck(offset); }
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
         let p = self.pointer.wrapping_add(offset as usize);
         *p = (*p).wrapping_sub(value);
     }
@@ -112,10 +112,8 @@ impl UnsafeInsts {
         unsafe { self.internal_pc.offset_from_unsigned(self.internal_insts_at) }
     }
     pub unsafe fn get_op(&self) -> &Bytecode {
-        #[cfg(feature = "debug")] {
-            if self.get_pc() >= self.insts_len {
-                panic!("[UNSAFE] Runtime Error: Out of range insts");
-            }
+        if cfg!(feature = "debug") && self.get_pc() >= self.insts_len {
+            panic!("[UNSAFE] Runtime Error: Out of range insts");
         }
         &*self.internal_pc
     }

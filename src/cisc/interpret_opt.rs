@@ -9,12 +9,13 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM, insts: &mut UnsafeInsts) -> Result<Inte
     let mut mul_val: u8 = 0;
     
     loop {
-        #[cfg(feature = "debug")] {
+        if cfg!(feature = "debug") {
             vm.inner.ocm.opt[insts.get_pc()] += 1;
         }
 
-        #[cfg(feature = "trace")]
-        println!("[TRACE] tier: Opt ptr: {}, executing {}", vm.get_ptr(), vm.get_pc());
+        if cfg!(feature = "trace") {
+            println!("[TRACE] tier: Opt ptr: {}, executing {}", vm.get_ptr(), insts.get_pc());
+        }
         
         match insts.get_op() {
             Bytecode::Breakpoint { delta } => {
