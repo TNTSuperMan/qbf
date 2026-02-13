@@ -47,17 +47,15 @@ fn main() {
                     return;
                 }
             };
-            #[cfg(feature = "debug")] {
-                if args.out_dump {
-                    fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
-                }
+            if cfg!(feature = "debug") && args.out_dump {
+                fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info)).expect("failed to write");
             }
 
             if let Err(msg) = run_cisc(&ir, &range_info, args.flush, args.out_dump) {
                 eprintln!("{}", msg);
             }
 
-            #[cfg(feature = "debug")] {
+            if cfg!(feature = "debug") {
                 use crate::ssa::{PointerSSAHistory, inline::inline_ssa_history, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
                 let noend_ir = &ir[0..ir.len()-1];
                 let raw = build_ssa_from_ir(&noend_ir).unwrap_or_else(|| PointerSSAHistory::new());

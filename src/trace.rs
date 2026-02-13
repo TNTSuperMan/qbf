@@ -39,26 +39,26 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
     for (i, ir) in ir_nodes.iter().enumerate() {
         use crate::ir::IROp;
 
-        if let IROp::LoopEnd(_) = ir.opcode {
+        if let IROp::LoopEnd(..) = ir.opcode {
             lv -= 1;
         }
-        if let IROp::LoopEndWithOffset(_, _) = ir.opcode {
+        if let IROp::LoopEndWithOffset(..) = ir.opcode {
             lv -= 1;
         }
         if let Some(ri) = range.map.get(&i) {
-            use crate::range::MemoryRange;
+            use crate::range::MidRange;
 
             str += &format!("{}{} {:?} (deopt condition: {})\n", "    ".repeat(lv), ir.pointer, ir.opcode, match ri {
-                MemoryRange::None => format!("false"),
-                MemoryRange::Positive(x) => format!("ptr >= {x}"),
-                MemoryRange::Negative(x) => format!("ptr < {x}"),
-                MemoryRange::Both { positive, negative } => format!("ptr >= {positive} || ptr < {negative}"),
+                MidRange::None => format!("false"),
+                MidRange::Negative(r) => format!("ptr < {}", r.start),
+                MidRange::Positive(r) => format!("ptr >= {}", r.end),
+                MidRange::Both(r) => format!("ptr < {} || ptr >= {}", r.start, r.end),
             });
         } else {
             str += &format!("{}{} {:?}\n", "    ".repeat(lv), ir.pointer, ir.opcode);
         }
 
-        if let IROp::LoopStart(_) = ir.opcode {
+        if let IROp::LoopStart(..) = ir.opcode {
             lv += 1;
         }
     }
