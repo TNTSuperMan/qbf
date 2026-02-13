@@ -1,7 +1,7 @@
-use crate::cisc::vm::VM;
+use crate::cisc::{vm::VM, bytecode::Bytecode};
 
 #[cfg(feature = "debug")]
-use crate::{cisc::bytecode::Bytecode, trace::OperationCountMap};
+use crate::trace::OperationCountMap;
 
 #[cfg(feature = "debug")]
 pub fn generate_bytecode_trace(bytecodes: &[Bytecode], ocm: &OperationCountMap) -> String {
@@ -28,13 +28,13 @@ pub fn generate_bytecode_trace(bytecodes: &[Bytecode], ocm: &OperationCountMap) 
 }
 
 #[cfg(not(feature = "debug"))]
-pub fn write_trace(vm: &VM) {}
+pub fn write_trace(vm: &VM, insts: &[Bytecode]) {}
 
 #[cfg(feature = "debug")]
-pub fn write_trace(vm: &VM) {
+pub fn write_trace(vm: &VM, insts: &[Bytecode]) {
     use std::fs;
     use crate::cisc::trace::generate_bytecode_trace;
 
-    fs::write("./box/bytecodes", generate_bytecode_trace(&vm.insts, &vm.ocm)).expect("failed to write");
+    fs::write("./box/bytecodes", generate_bytecode_trace(&insts, &vm.ocm)).expect("failed to write");
     fs::write("./box/memory", *vm.memory.0).expect("failed to write");
 }

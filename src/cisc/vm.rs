@@ -1,7 +1,6 @@
-use crate::{cisc::bytecode::{Bytecode, ir_to_bytecodes}, ir::IR, memory::Memory, range::RangeInfo, trace::OperationCountMap};
+use crate::{cisc::bytecode::Bytecode, memory::Memory, trace::OperationCountMap};
 
 pub struct VM {
-    pub insts: Box<[Bytecode]>,
     pub memory: Memory,
     pub ocm: OperationCountMap,
     pub pc: usize,
@@ -10,11 +9,9 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new(ir: &[IR], range_info: &RangeInfo, flush: bool) -> Result<VM, String> {
-        let bytecodes = ir_to_bytecodes(ir, range_info)?;
-        let ocm = OperationCountMap::new(bytecodes.len());
+    pub fn new(bytecodes_len: usize, flush: bool) -> Result<VM, String> {
+        let ocm = OperationCountMap::new(bytecodes_len);
         Ok(VM {
-            insts: bytecodes.into_boxed_slice(),
             memory: Memory::new(),
             ocm,
             pc: 0,
@@ -31,38 +28,12 @@ pub struct UnsafeVM<'a> {
     pub inner: &'a mut VM,
     memory_at: *mut u8,
     pointer: *mut u8,
-    internal_insts_at: *mut Bytecode,
-    internal_pc: *mut Bytecode,
 }
 impl<'a> UnsafeVM<'a> {
     pub unsafe fn new(vm: &'a mut VM) -> UnsafeVM<'a> {
         let memory_at = vm.memory.0.as_mut_ptr();
         let pointer = memory_at.add(vm.pointer);
-        let internal_insts_at = vm.insts.as_mut_ptr();
-        let internal_pc = internal_insts_at.add(vm.pc);
-        UnsafeVM { inner: vm, memory_at, pointer, internal_insts_at, internal_pc }
-    }
-
-    pub fn get_pc(&self) -> usize {
-        // SAFETY: 差分を求めるだけだから安全なはず
-        unsafe { self.internal_pc.offset_from_unsigned(self.internal_insts_at) }
-    }
-    pub unsafe fn get_op(&mut self) -> Bytecode {
-        #[cfg(feature = "debug")] {
-            if self.get_pc() >= self.inner.insts.len() {
-                panic!("[UNSAFE] Runtime Error: Out of range insts");
-            }
-        }
-        *self.internal_pc
-    }
-    pub unsafe fn jump_abs(&mut self, to: u32) {
-        self.internal_pc = self.internal_insts_at.add(to as usize);
-    }
-    pub unsafe fn jump_back(&mut self, to: u16) {
-        self.internal_pc = self.internal_pc.sub(to as usize);
-    }
-    pub unsafe fn jump_one(&mut self) {
-        self.internal_pc = self.internal_pc.add(1);
+        UnsafeVM { inner: vm, memory_at, pointer }
     }
 
     pub fn get_ptr(&self) -> usize {
@@ -117,6 +88,45 @@ impl<'a> UnsafeVM<'a> {
 impl<'a> Drop for UnsafeVM<'a> {
     fn drop(&mut self) {
         self.inner.pointer = self.get_ptr();
-        self.inner.pc = self.get_pc();
+    }
+}
+
+pub struct UnsafeInsts {
+    insts_len: usize,
+    internal_insts_at: *const Bytecode,
+    internal_pc: *const Bytecode,
+}
+impl UnsafeInsts {
+    pub unsafe fn new(insts: &[Bytecode], pc: usize) -> UnsafeInsts {
+        let insts_len = insts.len();
+        let internal_insts_at = insts.as_ptr();
+        UnsafeInsts {
+            insts_len,
+            internal_insts_at,
+            internal_pc: internal_insts_at.add(pc),
+        }
+    }
+
+    pub fn get_pc(&self) -> usize {
+        // SAFETY: 差分を求めるだけだから安全なはず
+        unsafe { self.internal_pc.offset_from_unsigned(self.internal_insts_at) }
+    }
+    pub unsafe fn get_op(&self) -> &Bytecode {
+        #[cfg(feature = "debug")] {
+            if self.get_pc() >= self.insts_len {
+                panic!("[UNSAFE] Runtime Error: Out of range insts");
+            }
+        }
+        &*self.internal_pc
+    }
+
+    pub unsafe fn jump_abs(&mut self, to: u32) {
+        self.internal_pc = self.internal_insts_at.add(to as usize);
+    }
+    pub unsafe fn jump_back(&mut self, to: u16) {
+        self.internal_pc = self.internal_pc.sub(to as usize);
+    }
+    pub unsafe fn jump_one(&mut self) {
+        self.internal_pc = self.internal_pc.add(1);
     }
 }
