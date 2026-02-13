@@ -2,7 +2,7 @@ use std::io::{Read, Write, stdin, stdout};
 
 use crate::{cisc::{bytecode::Bytecode, internal::{InterpreterResult, Tier}, vm::VM}};
 
-pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
+pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, String> {
     let mut stdout = stdout().lock();
     let mut stdin = stdin().lock();
     let mut stdin_buf: [u8; 1] = [0];
@@ -13,7 +13,7 @@ pub fn run_deopt(vm: &mut VM) -> Result<InterpreterResult, String> {
             vm.ocm.deopt[vm.pc] += 1;
         }
 
-        let bytecode = &vm.insts[vm.pc];
+        let bytecode = &insts[vm.pc];
         
         #[cfg(feature = "trace")]
         println!("[TRACE] tier: Deopt ptr: {}, executing {}", vm.pointer, vm.pc);
