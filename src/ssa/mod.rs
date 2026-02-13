@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Debug};
 pub mod parse;
 pub mod inline;
 pub mod to_ir;
+pub mod r#loop;
 
 #[derive(Clone)]
 pub struct PointerSSAHistory(HashMap<isize, Vec<SSAOp>>);
@@ -57,7 +58,7 @@ impl Debug for PointerVersion {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SSAOp {
     raw(isize),
     set_c(u8),
