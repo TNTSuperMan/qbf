@@ -16,7 +16,7 @@ pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, S
         let bytecode = &insts[vm.pc];
         
         if cfg!(feature = "trace") {
-            println!("[TRACE] tier: Deopt ptr: {}, executing {}", vm.pointer, vm.pc);
+            println!("[TRACE] tier: Deopt ptr: {}, val: {}, executing {}", vm.pointer, vm.memory.get(vm.pointer)?, vm.pc);
         }
         
         match bytecode {

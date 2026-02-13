@@ -14,7 +14,7 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM, insts: &mut UnsafeInsts) -> Result<Inte
         }
 
         if cfg!(feature = "trace") {
-            println!("[TRACE] tier: Opt ptr: {}, executing {}", vm.get_ptr(), insts.get_pc());
+            println!("[TRACE] tier: Opt ptr: {}, val: {}, executing {}", vm.get_ptr(), vm.get(), insts.get_pc());
         }
         
         match insts.get_op() {
