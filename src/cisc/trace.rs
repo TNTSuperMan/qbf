@@ -1,7 +1,7 @@
-use crate::cisc::vm::VM;
+use crate::cisc::{vm::VM, bytecode::Bytecode};
 
 #[cfg(feature = "debug")]
-use crate::{cisc::bytecode::Bytecode, trace::OperationCountMap};
+use crate::trace::OperationCountMap;
 
 #[cfg(feature = "debug")]
 pub fn generate_bytecode_trace(bytecodes: &[Bytecode], ocm: &OperationCountMap) -> String {
