@@ -1,3 +1,5 @@
+use crate::ssa::parse::build_ssa_from_ir;
+
 #[derive(Clone, PartialEq)]
 pub struct IR {
     pub pointer: isize,
@@ -115,8 +117,6 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                         continue;
                     }
                 } else if is_flat {
-                    is_flat = false;
-
                     if children == [IR { opcode: IROp::Add(255), pointer }] {
                         insts.truncate(start);
                         push_inst!(IROp::Set(0));
@@ -156,6 +156,13 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                             }
                         }
                     }
+
+                    let ssa = build_ssa_from_ir(children);
+                    if cfg!(feature = "debug") {
+                        println!("{start} {ssa:?}");
+                    }
+
+                    is_flat = false;
                 }
 
                 insts[start].opcode = IROp::LoopStart(end);
