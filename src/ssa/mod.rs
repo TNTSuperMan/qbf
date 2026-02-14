@@ -29,7 +29,7 @@ impl PointerSSAHistory {
         }
     }
     pub fn get_history_mut(&mut self, ptr: isize) -> &mut Vec<SSAOp> {
-        self.0.entry(ptr).or_insert_with(|| vec![SSAOp::raw(ptr)])
+        self.0.entry(ptr).or_insert_with(|| vec![SSAOp::Value(SSAValue::Raw(ptr))])
     }
     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, isize, Vec<SSAOp>> {
         self.0.iter()
@@ -57,35 +57,18 @@ impl Debug for PointerVersion {
     }
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum SSAOp {
-    raw(isize),
-    set_c(u8),
-    add_pc(PointerVersion, u8),
-    sub_pc(PointerVersion, u8),
-    sub_cp(u8, PointerVersion),
-    mul_pc(PointerVersion, u8),
-    add_pp(PointerVersion, PointerVersion),
-    sub_pp(PointerVersion, PointerVersion),
-
-    mul_add(PointerVersion, PointerVersion, u8),
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SSAValue {
+    Const(u8),
+    Version(PointerVersion),
+    Raw(isize),
 }
 
-impl Debug for SSAOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SSAOp::raw(ptr) => f.write_str(&format!("raw [{}]", ptr)),
-            SSAOp::set_c(val) => f.write_str(&format!("{}", val)),
-            SSAOp::add_pc(ptr, val) => f.write_str(&format!("add_pc {:?} + {}", ptr, val)),
-            SSAOp::sub_pc(ptr, val) => f.write_str(&format!("sub_pc {:?} - {}", ptr, val)),
-            SSAOp::sub_cp(val, ptr) => f.write_str(&format!("sub_cp {} - {:?}", val, ptr)),
-            SSAOp::mul_pc(dest, val) => f.write_str(&format!("mul_pc {:?} * {}", dest, val)),
-            SSAOp::add_pp(to, dest) => f.write_str(&format!("add_pp {:?} + {:?}", to, dest)),
-            SSAOp::sub_pp(to, dest) => f.write_str(&format!("sub_pp {:?} - {:?}", to, dest)),
-
-            SSAOp::mul_add(from, dest, val) => f.write_str(&format!("mul_add {:?} + {:?} * {}", from, dest, val)),
-        }?;
-        Ok(())
-    }
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SSAOp {
+    Value(SSAValue),
+    Add(SSAValue, SSAValue),
+    Sub(SSAValue, SSAValue),
+    Mul(SSAValue, SSAValue),
 }
