@@ -168,7 +168,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                         let in2 = inline_ssa_history(&in1);
                         let in3 = inline_ssa_history(&in2);
                         let ir = ssa_to_ir(&in3);
-                        println!("{start} {:?}", ir);
+                        println!("{start} {in3:?} {ir:?}");
                         /*if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&in3) {
                             let order = resolve_eval_order(&loop_ssa);
                             println!("{start} {loop_el} {loop_ssa:?}\n{order:?}\n");
