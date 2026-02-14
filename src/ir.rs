@@ -159,10 +159,9 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
 
                     let ssa = build_ssa_from_ir(children);
                     if cfg!(feature = "debug") && ssa.is_some() {
-                        let inlined = inline_ssa_history(&ssa.unwrap());
-                        let (loop_el, loop_ssa) = detect_ssa_loop(&inlined).unwrap();
-                        let order = resolve_eval_order(&loop_ssa);
-                        println!("{start} [{loop_el}] {loop_ssa:?}\n{order:?}\n");
+                        let inlined = inline_ssa_history(&inline_ssa_history(&ssa.unwrap()));
+                        let order = resolve_eval_order(&inlined);
+                        println!("{start} {inlined:?}\n{order:?}\n");
                     }
 
                     is_flat = false;

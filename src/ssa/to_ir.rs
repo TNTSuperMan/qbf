@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{ir::IR, ssa::{PointerSSAHistory, PointerVersion, SSAOp}};
+use crate::{ir::IR, ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue}};
 
 enum Schedule {
     Visit(PointerVersion),
@@ -14,6 +14,14 @@ pub fn resolve_eval_order(history: &PointerSSAHistory) -> Vec<PointerVersion> {
         Schedule::Visit(PointerVersion { ptr: *ptr, version: h.len() - 1 })
     }).collect();
 
+    macro_rules! schedule_visit {
+        ($v: expr) => {
+            if let SSAValue::Version(ver) = $v {
+                schedule.push(Schedule::Visit(ver))
+            }
+        };
+    }
+
     loop {
         match schedule.pop() {
             None => {
@@ -25,16 +33,10 @@ pub fn resolve_eval_order(history: &PointerSSAHistory) -> Vec<PointerVersion> {
                 }
                 schedule.push(Schedule::PushOrder(ver));
                 match history.get_op(ver).unwrap() {
-                    SSAOp::raw(_ptr) => (),
-                    SSAOp::set_c(_val) => (),
-                    SSAOp::add_pc(ver, _val) => schedule.push(Schedule::Visit(ver)),
-                    SSAOp::sub_pc(ver, _val) => schedule.push(Schedule::Visit(ver)),
-                    SSAOp::sub_cp(_val, ver) => schedule.push(Schedule::Visit(ver)),
-                    SSAOp::mul_pc(ver, _val) => schedule.push(Schedule::Visit(ver)),
-                    SSAOp::add_pp(ver, ver2) => { schedule.push(Schedule::Visit(ver)); schedule.push(Schedule::Visit(ver2)); },
-                    SSAOp::sub_pp(ver, ver2) => { schedule.push(Schedule::Visit(ver)); schedule.push(Schedule::Visit(ver2)); },
-
-                    SSAOp::mul_add(from, dest, _val) => { schedule.push(Schedule::Visit(from)); schedule.push(Schedule::Visit(dest)); },
+                    SSAOp::Value(v) => schedule_visit!(v),
+                    SSAOp::Add(v1, v2) => { schedule_visit!(v1); schedule_visit!(v2); },
+                    SSAOp::Sub(v1, v2) => { schedule_visit!(v1); schedule_visit!(v2); },
+                    SSAOp::Mul(v1, v2) => { schedule_visit!(v1); schedule_visit!(v2); },
                 }
             }
             Some(Schedule::PushOrder(ver)) => {
