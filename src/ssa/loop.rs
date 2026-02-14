@@ -1,9 +1,16 @@
 use crate::ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue};
 
 pub fn detect_ssa_loop(history: &PointerSSAHistory) -> Option<(isize, PointerSSAHistory)> {
-    return None;
     let loop_el_opt = history.iter().find(|(&ptr, h)| {
-        h.len() == 2
+        let root1 = SSAValue::Version(PointerVersion { ptr, version: 0 });
+        let root2 = SSAValue::Raw(ptr);
+        let last = *h.last().unwrap();
+        last == SSAOp::Add(root1, SSAValue::Const(255))
+        || last == SSAOp::Add(SSAValue::Const(255), root1)
+        || last == SSAOp::Add(root2, SSAValue::Const(255))
+        || last == SSAOp::Add(SSAValue::Const(255), root2)
+        || last == SSAOp::Sub(root1, SSAValue::Const(1))
+        || last == SSAOp::Sub(root2, SSAValue::Const(1))
     });
 
     match loop_el_opt {
