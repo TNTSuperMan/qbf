@@ -1,6 +1,6 @@
-use crate::ssa::{inline::inline_ssa_history, r#loop::detect_ssa_loop, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
+use crate::ssa::{inline::inline_ssa_history, r#loop::detect_ssa_loop, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}};
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct IR {
     pub pointer: isize,
     pub opcode: IROp,
@@ -23,6 +23,10 @@ pub enum IROp {
     LoopStart(usize), // end
     LoopEnd(usize), // start
     LoopEndWithOffset(usize, isize), // start, diff
+
+    StartSSA,
+    PushSSA(SSAOpIR),
+    AssignSSA(u8), // 連番
 
     End,
 }
@@ -163,13 +167,15 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                         let in1 = inline_ssa_history(&r_ssa);
                         let in2 = inline_ssa_history(&in1);
                         let in3 = inline_ssa_history(&in2);
-                        if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&in3) {
+                        let ir = ssa_to_ir(&in3);
+                        println!("{start} {:?}", ir);
+                        /*if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&in3) {
                             let order = resolve_eval_order(&loop_ssa);
                             println!("{start} {loop_el} {loop_ssa:?}\n{order:?}\n");
                         } else {
                             let order = resolve_eval_order(&in3);
                             println!("{start} {in3:?}\n{order:?}\n");
-                        }
+                        }*/
                     }
 
                     is_flat = false;

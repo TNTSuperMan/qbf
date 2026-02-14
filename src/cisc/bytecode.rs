@@ -73,7 +73,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     IROp::Breakpoint => {
                         bytecodes.push(Bytecode::Breakpoint { delta });
                     }
-
                     IROp::Add(val1) => {
                         match ir_nodes[i + 1] {
                             IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
@@ -116,7 +115,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             }
                         }
                     }
-
                     IROp::Shift(step) => {
                         let mid_range = range_info.map.get(&i).unwrap();
                         if let MidRange::Both(range) = mid_range {
@@ -207,14 +205,12 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             }
                         }
                     }
-
                     IROp::In => {
                         bytecodes.push(Bytecode::In { delta });
                     }
                     IROp::Out => {
                         bytecodes.push(Bytecode::Out { delta });
                     }
-
                     IROp::LoopStart(_end) => {
                         loop_stack.push(bytecodes.len());
                         bytecodes.push(Bytecode::JmpIfZero { delta, addr_abs: u32::MAX });
@@ -247,7 +243,9 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             MidRange::Both(range) => bytecodes.push(Bytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|_| "OptimizationError: delta Overflow")?, addr_back: subrel as u16, range: range.clone() }),
                         }
                     }
-
+                    IROp::StartSSA => todo!(),
+                    IROp::PushSSA(_ssaop_ir) => todo!(),
+                    IROp::AssignSSA(_) => todo!(),
                     IROp::End => {
                         bytecodes.push(Bytecode::End { delta });
                     }
