@@ -36,7 +36,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: 
         match result {
             Ok(InterpreterResult::End) => {
                 if cfg!(feature = "debug") && out_dump {
-                    write_trace(&vm, &insts);
+                    write_trace(&vm, &insts)?;
                 }
                 return Ok(());
             }
@@ -48,7 +48,7 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: 
             Err(msg) => {
                 if cfg!(feature = "debug") {
                     if out_dump {
-                        write_trace(&vm, &insts);
+                        write_trace(&vm, &insts)?;
                     }
                     println!("PC: {}({:?}), ptr: {}", vm.pc, insts[vm.pc], vm.pointer);
                 }
