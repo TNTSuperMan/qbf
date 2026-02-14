@@ -18,7 +18,7 @@ pub fn inline_ssa_history(history_map: &PointerSSAHistory) -> PointerSSAHistory 
                 SSAOp::Value(val) => {
                     match val {
                         SSAValue::Const(..) => None,
-                        SSAValue::Version(ver) => Some(SSAOp::Value(history_map.get_val(*ver))),
+                        SSAValue::Version(ver) => Some(history_map.get_op(*ver).unwrap()),
                         SSAValue::Raw(..) => None,
                     }
                 },
