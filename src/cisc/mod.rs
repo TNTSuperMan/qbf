@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, trace::write_trace, vm::{UnsafeInsts, UnsafeVM, VM}}, ir::IR, range::RangeInfo};
 
 mod bytecode;
@@ -7,9 +9,9 @@ mod trace;
 mod vm;
 mod internal;
 
-pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<(), String> {
+pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<()> {
     let insts = ir_to_bytecodes(ir_nodes, range_info)?;
-    let mut vm = VM::new(insts.len(), flush)?;
+    let mut vm = VM::new(insts.len(), flush);
     let mut tier = if range_info.do_opt_first {
         Tier::Opt
     } else {

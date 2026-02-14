@@ -1,3 +1,5 @@
+use anyhow::{Result, bail};
+
 const MEMORY_LENGTH: usize = 65536;
 
 pub struct Memory(pub Box<[u8; MEMORY_LENGTH]>);
@@ -9,15 +11,15 @@ impl Memory {
 }
 
 impl Memory {
-    pub fn get(&self, index: usize) -> Result<u8, String> {
+    pub fn get(&self, index: usize) -> Result<u8> {
         match self.0.get(index) {
             Some(val) => Ok(*val),
-            None => Err(format!("Runtime Error: Out of range memory get, Address: {}", index)),
+            None => bail!("Runtime Error: Out of range memory get, Address: {}", index),
         }
     }
-    pub fn set(&mut self, index: usize, value: u8) -> Result<(), String> {
+    pub fn set(&mut self, index: usize, value: u8) -> Result<()> {
         if self.0.len() <= index {
-            Err(format!("Runtime Error: Out of range memory set, Address: {}", index))
+            bail!("Runtime Error: Out of range memory set, Address: {}", index);
         } else {
             unsafe { // SAFETY: 直前に範囲を確認済み
                 *self.0.as_mut_ptr().add(index) = value;
@@ -25,9 +27,9 @@ impl Memory {
             Ok(())
         }
     }
-    pub fn add(&mut self, index: usize, value: u8) -> Result<(), String> {
+    pub fn add(&mut self, index: usize, value: u8) -> Result<()> {
         if self.0.len() <= index {
-            Err(format!("Runtime Error: Out of range memory add, Address: {}", index))
+            bail!("Runtime Error: Out of range memory add, Address: {}", index);
         } else {
             unsafe { // SAFETY: 直前に範囲を確認済み
                 let ptr = self.0.as_mut_ptr().add(index);
@@ -36,9 +38,9 @@ impl Memory {
             Ok(())
         }
     }
-    pub fn sub(&mut self, index: usize, value: u8) -> Result<(), String> {
+    pub fn sub(&mut self, index: usize, value: u8) -> Result<()> {
         if self.0.len() <= index {
-            Err(format!("Runtime Error: Out of range memory sub, Address: {}", index))
+            bail!("Runtime Error: Out of range memory sub, Address: {}", index);
         } else {
             unsafe { // SAFETY: 直前に範囲を確認済み
                 let ptr = self.0.as_mut_ptr().add(index);

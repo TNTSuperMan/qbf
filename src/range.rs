@@ -1,5 +1,7 @@
 use std::{collections::HashMap, ops::{Range, RangeFrom, RangeInclusive, RangeTo}};
 
+use anyhow::Result;
+
 use crate::ir::{IR, IROp};
 
 fn extend_ri_pointer(range: &RangeInclusive<isize>, pointer: isize) -> RangeInclusive<isize> {
@@ -62,22 +64,22 @@ pub struct RangeInfo {
     pub do_opt_first: bool,
 }
 impl RangeInfo {
-    fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, MidRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: ref range_raw })| {
+    fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo> {
+        let map_arr: Result<Vec<(usize, MidRange)>> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: ref range_raw })| {
             let range = (-(range_raw.start() - pointer))..(65536 - (range_raw.end() - pointer));
 
             match (range.start == 0, range.end == 65536) {
                 (false, false) => {
-                    let start: u16 = range.start.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
-                    let end: u16 = range.end.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let start: u16 = range.start.try_into()?;
+                    let end: u16 = range.end.try_into()?;
                     Ok((ir_at, MidRange::Both(start..end)))
                 }
                 (false, true) => {
-                    let start: u16 = range.start.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let start: u16 = range.start.try_into()?;
                     Ok((ir_at, MidRange::Negative(start..)))
                 }
                 (true, false) => {
-                    let end: u16 = range.end.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let end: u16 = range.end.try_into()?;
                     Ok((ir_at, MidRange::Positive(..end)))
                 }
                 (true, true) => {
@@ -92,7 +94,7 @@ impl RangeInfo {
     }
 }
 
-pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
+pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo> {
     let mut internal_ri = InternalRangeState::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {

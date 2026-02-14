@@ -1,3 +1,5 @@
+use anyhow::{Context, Result, bail};
+
 #[derive(Clone, PartialEq)]
 pub struct IR {
     pub pointer: isize,
@@ -27,7 +29,7 @@ pub enum IROp {
     End,
 }
 
-pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
+pub fn parse_to_ir(code: &str) -> Result<Vec<IR>> {
     let mut insts: Vec<IR> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
     let mut pointer: isize = 0;
@@ -101,7 +103,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                 push_inst!(IROp::LoopStart(usize::MAX));
             }
             ']' => {
-                let start = loop_stack.pop().ok_or_else(|| "Syntax Error: Unmatched closing bracket")?;
+                let start = loop_stack.pop().with_context(|| "Syntax Error: Unmatched closing bracket")?;
                 let start_ptr = insts[start].pointer;
                 let end = insts.len();
                 let end_ptr = pointer;
@@ -184,7 +186,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
     insts.push(IR { pointer, opcode: IROp::End });
 
     if loop_stack.len() != 0 {
-        return Err(String::from("Syntax Error: Unmatched opening bracket"))
+        bail!("Syntax Error: Unmatched opening bracket");
     }
 
     Ok(insts)
