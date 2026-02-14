@@ -27,7 +27,7 @@ pub fn detect_ssa_loop(history: &PointerSSAHistory) -> Option<(isize, PointerSSA
                             false
                         }
                     };
-                };
+                }
                 let use_loop_el = h.iter().any(|op| match op {
                     SSAOp::Value(val) => is_eq_ptr!(*val),
                     SSAOp::Add(v1, v2) => is_eq_ptr!(v1) || is_eq_ptr!(v2),
