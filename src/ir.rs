@@ -1,4 +1,4 @@
-use crate::ssa::{inline::inline_ssa_history, r#loop::detect_ssa_loop, parse::build_ssa_from_ir};
+use crate::ssa::{inline::inline_ssa_history, r#loop::detect_ssa_loop, parse::build_ssa_from_ir, to_ir::resolve_eval_order};
 
 #[derive(Clone, PartialEq)]
 pub struct IR {
@@ -161,7 +161,8 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                     if cfg!(feature = "debug") && ssa.is_some() {
                         let inlined = inline_ssa_history(&ssa.unwrap());
                         let (loop_el, loop_ssa) = detect_ssa_loop(&inlined).unwrap();
-                        println!("{start} [{loop_el}] {loop_ssa:?}");
+                        let order = resolve_eval_order(&loop_ssa);
+                        println!("{start} [{loop_el}] {loop_ssa:?}\n{order:?}\n");
                     }
 
                     is_flat = false;
