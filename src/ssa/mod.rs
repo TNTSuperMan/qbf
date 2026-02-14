@@ -57,18 +57,37 @@ impl Debug for PointerVersion {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SSAValue {
     Const(u8),
     Version(PointerVersion),
     Raw(isize),
 }
+impl Debug for SSAValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SSAValue::Const(val) => val.fmt(f),
+            SSAValue::Version(ver) => ver.fmt(f),
+            SSAValue::Raw(r)=> f.write_str(&format!("[{}]", r)),
+        }
+    }
+}
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SSAOp {
     Value(SSAValue),
     Add(SSAValue, SSAValue),
     Sub(SSAValue, SSAValue),
     Mul(SSAValue, SSAValue),
+}
+impl Debug for SSAOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SSAOp::Value(val) => val.fmt(f),
+            SSAOp::Add(v1, v2) => f.write_str(&format!("{v1:?} + {v2:?}")),
+            SSAOp::Sub(v1, v2) => f.write_str(&format!("{v1:?} - {v2:?}")),
+            SSAOp::Mul(v1, v2) => f.write_str(&format!("{v1:?} * {v2:?}")),
+        }
+    }
 }
