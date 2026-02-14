@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Result, bail, ensure};
 
 const MEMORY_LENGTH: usize = 65536;
 
@@ -18,35 +18,26 @@ impl Memory {
         }
     }
     pub fn set(&mut self, index: usize, value: u8) -> Result<()> {
-        if self.0.len() <= index {
-            bail!("Runtime Error: Out of range memory set, Address: {}", index);
-        } else {
-            unsafe { // SAFETY: 直前に範囲を確認済み
-                *self.0.as_mut_ptr().add(index) = value;
-            }
-            Ok(())
+        ensure!(self.0.len() <= index, "Runtime Error: Out of range memory set, Address: {index}");
+        unsafe { // SAFETY: 直前に範囲を確認済み
+            *self.0.as_mut_ptr().add(index) = value;
         }
+        Ok(())
     }
     pub fn add(&mut self, index: usize, value: u8) -> Result<()> {
-        if self.0.len() <= index {
-            bail!("Runtime Error: Out of range memory add, Address: {}", index);
-        } else {
-            unsafe { // SAFETY: 直前に範囲を確認済み
-                let ptr = self.0.as_mut_ptr().add(index);
-                *ptr = (*ptr).wrapping_add(value);
-            }
-            Ok(())
+        ensure!(self.0.len() <= index, "Runtime Error: Out of range memory add, Address: {index}");
+        unsafe { // SAFETY: 直前に範囲を確認済み
+            let ptr = self.0.as_mut_ptr().add(index);
+            *ptr = (*ptr).wrapping_add(value);
         }
+        Ok(())
     }
     pub fn sub(&mut self, index: usize, value: u8) -> Result<()> {
-        if self.0.len() <= index {
-            bail!("Runtime Error: Out of range memory sub, Address: {}", index);
-        } else {
-            unsafe { // SAFETY: 直前に範囲を確認済み
-                let ptr = self.0.as_mut_ptr().add(index);
-                *ptr = (*ptr).wrapping_sub(value);
-            }
-            Ok(())
+        ensure!(self.0.len() <= index, "Runtime Error: Out of range memory sub, Address: {index}");
+        unsafe { // SAFETY: 直前に範囲を確認済み
+            let ptr = self.0.as_mut_ptr().add(index);
+            *ptr = (*ptr).wrapping_sub(value);
         }
+        Ok(())
     }
 }
