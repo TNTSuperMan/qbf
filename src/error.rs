@@ -22,6 +22,7 @@ pub enum BrainrotError {
 
     #[error("RuntimeError: {err}")]
     RuntimeError{
+        #[source]
         err: RuntimeError,
         pc: usize,
         pointer: usize,

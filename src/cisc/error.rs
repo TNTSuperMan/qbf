@@ -5,16 +5,16 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum OptimizationError {
     #[error("Pointer delta overflow")]
-    Delta(TryFromIntError),
+    Delta(#[source] TryFromIntError),
 
     #[error("Shift step overflow")]
-    ShiftStep(TryFromIntError),
+    ShiftStep(#[source] TryFromIntError),
 
     #[error("Program address overflow")]
-    ProgramAbs(TryFromIntError),
+    ProgramAbs(#[source] TryFromIntError),
 
     #[error("Program relative address overflow")]
-    ProgramRel(TryFromIntError),
+    ProgramRel(#[source] TryFromIntError),
 }
 
 #[derive(Error, Debug)]
