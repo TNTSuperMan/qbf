@@ -17,13 +17,13 @@ impl PointerSSAHistory {
 }
 
 pub fn inline_ssa_history(history_map: &PointerSSAHistory, inline_raw: bool) -> PointerSSAHistory {
-    let in1 = internal__inline_ssa_history(history_map, inline_raw);
-    let in2 = internal__inline_ssa_history(&in1, inline_raw);
-    let in3 = internal__inline_ssa_history(&in2, inline_raw);
+    let in1 = internal_inline_ssa_history(history_map, inline_raw);
+    let in2 = internal_inline_ssa_history(&in1, inline_raw);
+    let in3 = internal_inline_ssa_history(&in2, inline_raw);
     return in3;
 }
 
-fn internal__inline_ssa_history(history_map: &PointerSSAHistory, inline_raw: bool) -> PointerSSAHistory {
+fn internal_inline_ssa_history(history_map: &PointerSSAHistory, inline_raw: bool) -> PointerSSAHistory {
     let mut inlined_history_map: PointerSSAHistory = PointerSSAHistory::new();
     for (ptr, history) in history_map.iter() {
         let mut inlined_history: Vec<SSAOp> = vec![];
