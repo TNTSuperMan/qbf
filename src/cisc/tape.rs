@@ -6,7 +6,6 @@ pub struct Tape {
     pub buffer: Box<[u8; MEMORY_LENGTH]>,
     pub data_pointer: usize,
 }
-
 impl Tape {
     pub fn new() -> Tape {
         Tape {
@@ -14,9 +13,6 @@ impl Tape {
             data_pointer: 0,
         }
     }
-}
-
-impl Tape {
     pub fn get(&self) -> Result<u8, RuntimeError> {
         self.buffer.get(self.data_pointer).ok_or_else(|| RuntimeError::OOBGet(self.data_pointer)).copied()
     }
@@ -44,6 +40,7 @@ impl Tape {
         self.data_pointer = self.data_pointer.wrapping_add_signed(delta);
     }
 }
+
 pub struct UnsafeTape<'a> {
     pub inner: &'a mut Tape,
     buffer_at: *mut u8,

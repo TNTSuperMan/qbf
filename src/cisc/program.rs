@@ -6,7 +6,6 @@ pub struct Program<'a> {
     pc: usize,
     pub flush: bool,
 }
-
 impl<'a> Program<'a> {
     pub fn new(bytecodes: &'a [Bytecode], flush: bool) -> Program<'a> {
         let ocm = OperationCountMap::new(bytecodes.len());
@@ -33,7 +32,6 @@ impl<'a> Program<'a> {
         self.pc = self.pc.wrapping_sub(addr);
     }
 }
-
 
 pub struct UnsafeProgram<'a, 'b> {
     pub inner: &'b mut Program<'a>,
