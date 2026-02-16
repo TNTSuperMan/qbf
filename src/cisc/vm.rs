@@ -29,6 +29,7 @@ pub struct UnsafeVM<'a> {
     memory_at: *mut u8,
     pointer: *mut u8,
 }
+#[allow(unused)]
 impl<'a> UnsafeVM<'a> {
     pub unsafe fn new(vm: &'a mut VM) -> UnsafeVM<'a> {
         let memory_at = vm.memory.0.as_mut_ptr();
