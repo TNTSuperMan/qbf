@@ -1,12 +1,6 @@
-#[cfg(feature = "debug")]
 use std::io;
+use crate::cisc::{program::Program, bytecode::Bytecode, tape::Tape};
 
-use crate::cisc::{program::Program, bytecode::Bytecode};
-
-#[cfg(feature = "debug")]
-use crate::cisc::tape::Tape;
-
-#[cfg(feature = "debug")]
 pub fn generate_bytecode_trace(program: &Program) -> String {
     let mut str = String::new();
     let mut lv: usize = 0;
@@ -30,16 +24,14 @@ pub fn generate_bytecode_trace(program: &Program) -> String {
     str
 }
 
-#[cfg(not(feature = "debug"))]
-pub fn write_trace(tape: &Tape, program: &Program) {}
-
-#[cfg(feature = "debug")]
 pub fn write_trace(tape: &Tape, program: &Program) -> Result<(), io::Error> {
-    use std::fs;
-    use crate::cisc::trace::generate_bytecode_trace;
+    if cfg!(feature = "debug") {
+        use std::fs;
+        use crate::cisc::trace::generate_bytecode_trace;
 
-    fs::write("./box/memory", *tape.buffer)?;
-    fs::write("./box/bytecodes", generate_bytecode_trace(&program))?;
+        fs::write("./box/memory", *tape.buffer)?;
+        fs::write("./box/bytecodes", generate_bytecode_trace(&program))?;
+    }
 
     Ok(())
 }
