@@ -9,15 +9,15 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new(bytecodes_len: usize, flush: bool) -> Result<VM, String> {
+    pub fn new(bytecodes_len: usize, flush: bool) -> VM {
         let ocm = OperationCountMap::new(bytecodes_len);
-        Ok(VM {
+        VM {
             memory: Memory::new(),
             ocm,
             pc: 0,
             pointer: 0,
             flush,
-        })
+        }
     }
     pub fn step_ptr(&mut self, delta: isize) {
         self.pointer = self.pointer.wrapping_add_signed(delta);
