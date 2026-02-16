@@ -1,5 +1,7 @@
 use crate::ssa::{inline::inline_ssa_history, r#loop::detect_ssa_loop, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}};
 
+use crate::error::SyntaxError;
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct IR {
     pub pointer: isize,
@@ -31,7 +33,7 @@ pub enum IROp {
     End,
 }
 
-pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
+pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
     let mut insts: Vec<IR> = vec![];
     let mut loop_stack: Vec<usize> = vec![];
     let mut pointer: isize = 0;
@@ -105,7 +107,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
                 push_inst!(IROp::LoopStart(usize::MAX));
             }
             ']' => {
-                let start = loop_stack.pop().ok_or_else(|| "Syntax Error: Unmatched closing bracket")?;
+                let start = loop_stack.pop().ok_or_else(|| SyntaxError::UnmatchedClosingBracket)?;
                 let start_ptr = insts[start].pointer;
                 let end = insts.len();
                 let end_ptr = pointer;
@@ -195,7 +197,7 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, String> {
     insts.push(IR { pointer, opcode: IROp::End });
 
     if loop_stack.len() != 0 {
-        return Err(String::from("Syntax Error: Unmatched opening bracket"))
+        return Err(SyntaxError::UnmatchedOpeningBracket);
     }
 
     Ok(insts)

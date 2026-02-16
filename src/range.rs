@@ -1,6 +1,17 @@
-use std::{collections::HashMap, ops::{Range, RangeFrom, RangeInclusive, RangeTo}};
+use std::{collections::HashMap, num::TryFromIntError, ops::{Range, RangeFrom, RangeInclusive, RangeTo}};
 
-use crate::ir::{IR, IROp};
+use thiserror::Error;
+
+use crate::{TAPE_LENGTH, ir::{IR, IROp}};
+
+#[derive(Error, Debug)]
+pub enum RangeError {
+    #[error("Start range overflow")]
+    StartOverflow(TryFromIntError, isize),
+    
+    #[error("End range overflow")]
+    EndOverflow(TryFromIntError, isize),
+}
 
 fn extend_ri_pointer(range: &RangeInclusive<isize>, pointer: isize) -> RangeInclusive<isize> {
     return (*range.start()).min(pointer)..=(*range.end()).max(pointer);
@@ -62,22 +73,22 @@ pub struct RangeInfo {
     pub do_opt_first: bool,
 }
 impl RangeInfo {
-    fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, String> {
-        let map_arr: Result<Vec<(usize, MidRange)>, String> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: ref range_raw })| {
-            let range = (-(range_raw.start() - pointer))..(65536 - (range_raw.end() - pointer));
+    fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, RangeError> {
+        let map_arr: Result<Vec<(usize, MidRange)>, RangeError> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: ref range_raw })| {
+            let range = (-(range_raw.start() - pointer))..((TAPE_LENGTH as isize) - (range_raw.end() - pointer));
 
-            match (range.start == 0, range.end == 65536) {
+            match (range.start == 0, range.end == (TAPE_LENGTH as isize)) {
                 (false, false) => {
-                    let start: u16 = range.start.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
-                    let end: u16 = range.end.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let start: u16 = range.start.try_into().map_err(|e| RangeError::StartOverflow(e, range.start))?;
+                    let end: u16 = range.end.try_into().map_err(|e| RangeError::EndOverflow(e, range.end))?;
                     Ok((ir_at, MidRange::Both(start..end)))
                 }
                 (false, true) => {
-                    let start: u16 = range.start.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let start: u16 = range.start.try_into().map_err(|e| RangeError::StartOverflow(e, range.start))?;
                     Ok((ir_at, MidRange::Negative(start..)))
                 }
                 (true, false) => {
-                    let end: u16 = range.end.try_into().map_err(|_| "OptimizationError: Pointer Range Overflow")?;
+                    let end: u16 = range.end.try_into().map_err(|e| RangeError::EndOverflow(e, range.end))?;
                     Ok((ir_at, MidRange::Positive(..end)))
                 }
                 (true, true) => {
@@ -87,12 +98,12 @@ impl RangeInfo {
         }).collect();
         Ok(RangeInfo {
             map: HashMap::from_iter(map_arr?),
-            do_opt_first: !(*internal_ri.curr.start() < 0) && !(*internal_ri.curr.end() >= 65536),
+            do_opt_first: !(*internal_ri.curr.start() < 0) && !(*internal_ri.curr.end() >= (TAPE_LENGTH as isize)),
         })
     }
 }
 
-pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, String> {
+pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, RangeError> {
     let mut internal_ri = InternalRangeState::new();
 
     for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
