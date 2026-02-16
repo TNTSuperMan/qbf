@@ -76,11 +76,11 @@ fn ssa_op_to_ir(op: &SSAOp, order: &[PointerVersion]) -> SSAOpIR {
             ssa_val_to_ir(v1, order),
             ssa_val_to_ir(v2, order),
         ),
-        SSAOp::Sub(v1, v2) => SSAOpIR::Add(
+        SSAOp::Sub(v1, v2) => SSAOpIR::Sub(
             ssa_val_to_ir(v1, order),
             ssa_val_to_ir(v2, order),
         ),
-        SSAOp::Mul(v1, v2) => SSAOpIR::Add(
+        SSAOp::Mul(v1, v2) => SSAOpIR::Mul(
             ssa_val_to_ir(v1, order),
             ssa_val_to_ir(v2, order),
         ),
