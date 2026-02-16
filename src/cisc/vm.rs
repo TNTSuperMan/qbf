@@ -1,37 +1,47 @@
-use crate::{cisc::{bytecode::Bytecode, memory::Memory}, trace::OperationCountMap};
+use crate::{cisc::bytecode::Bytecode, trace::OperationCountMap};
 
-pub struct VM {
-    pub memory: Memory,
+pub struct Program<'a> {
     pub ocm: OperationCountMap,
-    pub pc: usize,
-    pub pointer: usize,
+    insts: &'a [Bytecode],
+    pc: usize,
     pub flush: bool,
 }
 
-impl VM {
-    pub fn new(bytecodes_len: usize, flush: bool) -> VM {
-        let ocm = OperationCountMap::new(bytecodes_len);
-        VM {
-            memory: Memory::new(),
+impl<'a> Program<'a> {
+    pub fn new(bytecodes: &[Bytecode], flush: bool) -> Program {
+        let ocm = OperationCountMap::new(bytecodes.len());
+        Program {
             ocm,
+            insts: bytecodes,
             pc: 0,
-            pointer: 0,
             flush,
         }
     }
-    pub fn step_ptr(&mut self, delta: isize) {
-        self.pointer = self.pointer.wrapping_add_signed(delta);
+    pub fn pc(&self) -> usize {
+        self.pc
+    }
+    pub fn inst(&self) -> &Bytecode {
+        &self.insts[self.pc]
+    }
+    pub fn step(&mut self) {
+        self.pc = self.pc.wrapping_add(1);
+    }
+    pub fn jump_abs(&mut self, addr: usize) {
+        self.pc = addr as usize;
+    }
+    pub fn jump_back(&mut self, addr: usize) {
+        self.pc = self.pc.wrapping_sub(addr);
     }
 }
 
 pub struct UnsafeVM<'a> {
-    pub inner: &'a mut VM,
+    pub inner: &'a mut Program,
     memory_at: *mut u8,
     pointer: *mut u8,
 }
 #[allow(unused)]
 impl<'a> UnsafeVM<'a> {
-    pub unsafe fn new(vm: &'a mut VM) -> UnsafeVM<'a> {
+    pub unsafe fn new(vm: &'a mut Program) -> UnsafeVM<'a> {
         let memory_at = vm.memory.0.as_mut_ptr();
         let pointer = memory_at.add(vm.pointer);
         UnsafeVM { inner: vm, memory_at, pointer }

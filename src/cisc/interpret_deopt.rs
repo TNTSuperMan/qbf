@@ -1,8 +1,8 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::cisc::{bytecode::Bytecode, error::RuntimeError, internal::{InterpreterResult, Tier}, vm::VM};
+use crate::cisc::{bytecode::Bytecode, error::RuntimeError, internal::{InterpreterResult, Tier}, memory::Tape, vm::Program};
 
-pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, RuntimeError> {
+pub fn run_deopt(tape: &mut Tape, program: &mut Program) -> Result<InterpreterResult, RuntimeError> {
     let mut stdout = stdout().lock();
     let mut stdin = stdin().lock();
     let mut stdin_buf: [u8; 1] = [0];
@@ -10,326 +10,325 @@ pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, R
     
     loop {
         if cfg!(feature = "debug") {
-            vm.ocm.deopt[vm.pc] += 1;
+            let pc = program.pc();
+            program.ocm.deopt[pc] += 1;
         }
 
-        let bytecode = &insts[vm.pc];
-        
         if cfg!(feature = "trace") {
-            println!("[TRACE] tier: Deopt ptr: {}, executing {}", vm.pointer, vm.pc);
+            println!("[TRACE] tier: Deopt ptr: {}, executing {}", tape.data_pointer, program.pc());
         }
         
-        match bytecode {
+        match program.inst() {
             Bytecode::Breakpoint { delta } => {
-                vm.step_ptr((*delta) as isize);
-                eprintln!("PC: {}, PTR: {}", vm.pc, vm.pointer);
+                tape.step(*delta as isize);
+                eprintln!("PC: {}, PTR: {}", program.pc(), tape.data_pointer);
             }
 
             Bytecode::SingleAdd { delta, val } => {
-                vm.step_ptr((*delta) as isize);
-                vm.memory.add(vm.pointer, *val)?;
+                tape.step(*delta as isize);
+                tape.add(*val)?;
             }
             Bytecode::SingleSet { delta, val } => {
-                vm.step_ptr((*delta) as isize);
-                vm.memory.set(vm.pointer, *val)?;
+                tape.step(*delta as isize);
+                tape.set(*val)?;
             }
             Bytecode::AddAdd { delta1, val1, delta2, val2 } => {
-                vm.step_ptr((*delta1) as isize);
-                vm.memory.add(vm.pointer, *val1)?;
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.add(vm.pointer, *val2)?;
+                tape.step(*delta1 as isize);
+                tape.add(*val1)?;
+                tape.step(*delta2 as isize);
+                tape.add(*val2)?;
             }
             Bytecode::AddSet { delta1, val1, delta2, val2 } => {
-                vm.step_ptr((*delta1) as isize);
-                vm.memory.add(vm.pointer, *val1)?;
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.set(vm.pointer, *val2)?;
+                tape.step(*delta1 as isize);
+                tape.add(*val1)?;
+                tape.step(*delta2 as isize);
+                tape.set(*val2)?;
             }
             Bytecode::SetAdd { delta1, val1, delta2, val2 } => {
-                vm.step_ptr((*delta1) as isize);
-                vm.memory.set(vm.pointer, *val1)?;
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.add(vm.pointer, *val2)?;
+                tape.step(*delta1 as isize);
+                tape.set(*val1)?;
+                tape.step(*delta2 as isize);
+                tape.add(*val2)?;
             }
             Bytecode::SetSet { delta1, val1, delta2, val2 } => {
-                vm.step_ptr((*delta1) as isize);
-                vm.memory.set(vm.pointer, *val1)?;
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.set(vm.pointer, *val2)?;
+                tape.step(*delta1 as isize);
+                tape.set(*val1)?;
+                tape.step(*delta2 as isize);
+                tape.set(*val2)?;
             }
 
             Bytecode::BothRangeCheck { range } => {
-                if range.contains(&(vm.pointer as u16)) {
-                    vm.pc += 1;
+                if range.contains(&(tape.data_pointer as u16)) {
+                    program.step();
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             Bytecode::Shift { delta, step } => {
-                vm.step_ptr((*delta) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
             }
             Bytecode::ShiftP { delta, step, range } => {
-                vm.step_ptr((*delta) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                if range.contains(&(vm.pointer as u16)) {
-                    vm.pc += 1;
+                if range.contains(&(tape.data_pointer as u16)) {
+                    program.step();
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             Bytecode::ShiftN { delta, step, range } => {
-                vm.step_ptr((*delta) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                if range.contains(&(vm.pointer as u16)) {
-                    vm.pc += 1;
+                if range.contains(&(tape.data_pointer as u16)) {
+                    program.step();
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
             }
             Bytecode::ShiftAdd { delta1, step, delta2, val } => {
-                vm.step_ptr((*delta1) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta1 as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.add(vm.pointer, *val)?;
+                tape.step(*delta2 as isize);
+                tape.add(*val)?;
             }
             Bytecode::ShiftAddP { delta1, step, delta2, val, range } => {
-                vm.step_ptr((*delta1) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta1 as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                if range.contains(&(vm.pointer as u16)) {
-                    vm.step_ptr((*delta2) as isize);
-                    vm.memory.add(vm.pointer, *val)?;
-                    vm.pc += 1;
+                if range.contains(&(tape.data_pointer as u16)) {
+                    tape.step(*delta2 as isize);
+                    tape.add(*val)?;
+                    program.step();
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.add(vm.pointer, *val)?;
+                tape.step(*delta2 as isize);
+                tape.add(*val)?;
             }
             Bytecode::ShiftAddN { delta1, step, delta2, val, range } => {
-                vm.step_ptr((*delta1) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta1 as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                if range.contains(&(vm.pointer as u16)) {
-                    vm.step_ptr((*delta2) as isize);
-                    vm.memory.add(vm.pointer, *val)?;
-                    vm.pc += 1;
+                if range.contains(&(tape.data_pointer as u16)) {
+                    tape.step(*delta2 as isize);
+                    tape.add(*val)?;
+                    program.step();
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.add(vm.pointer, *val)?;
+                tape.step(*delta2 as isize);
+                tape.add(*val)?;
             }
             Bytecode::ShiftSet { delta1, step, delta2, val } => {
-                vm.step_ptr((*delta1) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta1 as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.set(vm.pointer, *val)?;
+                tape.step(*delta2 as isize);
+                tape.set(*val)?;
             }
             Bytecode::ShiftSetP { delta1, step, delta2, val, range } => {
-                vm.step_ptr((*delta1) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta1 as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                if range.contains(&(vm.pointer as u16)) {
-                    vm.step_ptr((*delta2) as isize);
-                    vm.memory.set(vm.pointer, *val)?;
-                    vm.pc += 1;
+                if range.contains(&(tape.data_pointer as u16)) {
+                    tape.step(*delta2 as isize);
+                    tape.set(*val)?;
+                    program.step();
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.set(vm.pointer, *val)?;
+                tape.step(*delta2 as isize);
+                tape.set(*val)?;
             }
             Bytecode::ShiftSetN { delta1, step, delta2, val, range } => {
-                vm.step_ptr((*delta1) as isize);
-                while vm.memory.get(vm.pointer)? != 0 {
-                    vm.step_ptr((*step) as isize);
+                tape.step(*delta1 as isize);
+                while tape.get()? != 0 {
+                    tape.step(*step as isize);
                 }
-                if range.contains(&(vm.pointer as u16)) {
-                    vm.step_ptr((*delta2) as isize);
-                    vm.memory.set(vm.pointer, *val)?;
-                    vm.pc += 1;
+                if range.contains(&(tape.data_pointer as u16)) {
+                    tape.step(*delta2 as isize);
+                    tape.set(*val)?;
+                    program.step();
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
-                vm.step_ptr((*delta2) as isize);
-                vm.memory.set(vm.pointer, *val)?;
+                tape.step(*delta2 as isize);
+                tape.set(*val)?;
             }
 
             Bytecode::MulStart { delta, jz_abs } => {
-                vm.step_ptr((*delta) as isize);
-                let val = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let val = tape.get()?;
                 if val == 0 {
-                    vm.pc = (*jz_abs) as usize;
+                    program.jump_abs(*jz_abs as usize);
                     continue;
                 } else {
                     mul_val = val;
-                    vm.memory.set(vm.pointer, 0)?;
+                    tape.set(0)?;
                 }
             }
             Bytecode::Mul { delta, val } => {
-                vm.memory.add(vm.pointer.wrapping_add_signed((*delta) as isize), mul_val.wrapping_mul(*val))?;
+                tape.add_with_offset(*delta as isize, mul_val.wrapping_mul(*val))?;
             }
 
             Bytecode::SingleMoveAdd { delta, to } => {
-                vm.step_ptr((*delta) as isize);
-                let v = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let v = tape.get()?;
                 if v != 0 {
-                    vm.memory.set(vm.pointer, 0)?;
-                    vm.memory.add(vm.pointer.wrapping_add_signed((*to) as isize), v)?;
+                    tape.set(0)?;
+                    tape.add_with_offset(*to as isize, v)?;
                 }
             }
             Bytecode::SingleMoveSub { delta, to } => {
-                vm.step_ptr((*delta) as isize);
-                let v = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let v = tape.get()?;
                 if v != 0 {
-                    vm.memory.set(vm.pointer, 0)?;
-                    vm.memory.sub(vm.pointer.wrapping_add_signed((*to) as isize), v)?;
+                    tape.set(0)?;
+                    tape.sub_with_offset(*to as isize, v)?;
                 }
             }
 
             Bytecode::DoubleMoveAddAdd { delta, to1, to2 } => {
-                vm.step_ptr((*delta) as isize);
-                let v = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let v = tape.get()?;
                 if v != 0 {
-                    vm.memory.add(vm.pointer.wrapping_add_signed((*to1) as isize), v)?;
-                    vm.memory.add(vm.pointer.wrapping_add_signed((*to2) as isize), v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    tape.add_with_offset(*to1 as isize, v)?;
+                    tape.add_with_offset(*to2 as isize, v)?;
+                    tape.set(0)?;
                 }
             }
             Bytecode::DoubleMoveAddSub { delta, to1, to2 } => {
-                vm.step_ptr((*delta) as isize);
-                let v = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let v = tape.get()?;
                 if v != 0 {
-                    vm.memory.add(vm.pointer.wrapping_add_signed((*to1) as isize), v)?;
-                    vm.memory.sub(vm.pointer.wrapping_add_signed((*to2) as isize), v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    tape.add_with_offset(*to1 as isize, v)?;
+                    tape.sub_with_offset(*to2 as isize, v)?;
+                    tape.set(0)?;
                 }
             }
             Bytecode::DoubleMoveSubAdd { delta, to1, to2 } => {
-                vm.step_ptr((*delta) as isize);
-                let v = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let v = tape.get()?;
                 if v != 0 {
-                    vm.memory.sub(vm.pointer.wrapping_add_signed((*to1) as isize), v)?;
-                    vm.memory.add(vm.pointer.wrapping_add_signed((*to2) as isize), v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    tape.sub_with_offset(*to1 as isize, v)?;
+                    tape.add_with_offset(*to2 as isize, v)?;
+                    tape.set(0)?;
                 }
             }
             Bytecode::DoubleMoveSubSub { delta, to1, to2 } => {
-                vm.step_ptr((*delta) as isize);
-                let v = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let v = tape.get()?;
                 if v != 0 {
-                    vm.memory.sub(vm.pointer.wrapping_add_signed((*to1) as isize), v)?;
-                    vm.memory.sub(vm.pointer.wrapping_add_signed((*to2) as isize), v)?;
-                    vm.memory.set(vm.pointer, 0)?;
+                    tape.sub_with_offset(*to1 as isize, v)?;
+                    tape.sub_with_offset(*to2 as isize, v)?;
+                    tape.set(0)?;
                 }
             }
 
             Bytecode::MoveStart { delta, jz_abs } => {
-                vm.step_ptr((*delta) as isize);
-                let val = vm.memory.get(vm.pointer)?;
+                tape.step(*delta as isize);
+                let val = tape.get()?;
                 if val == 0 {
-                    vm.pc = (*jz_abs) as usize;
+                    program.jump_abs(*jz_abs as usize);
                     continue;
                 } else {
                     mul_val = val;
-                    vm.memory.set(vm.pointer, 0)?;
+                    tape.set(0)?;
                 }
             }
             Bytecode::MoveAdd { delta } => {
-                vm.memory.add(vm.pointer.wrapping_add_signed((*delta) as isize), mul_val)?;
+                tape.add_with_offset(*delta as isize, mul_val)?;
             }
             Bytecode::MoveSub { delta } => {
-                vm.memory.sub(vm.pointer.wrapping_add_signed((*delta) as isize), mul_val)?;
+                tape.sub_with_offset(*delta as isize, mul_val)?;
             }
 
             Bytecode::In { delta } => {
-                vm.step_ptr((*delta) as isize);
+                tape.step(*delta as isize);
                 match stdin.read_exact(&mut stdin_buf) {
-                    Ok(_) => vm.memory.set(vm.pointer, stdin_buf[0])?,
-                    Err(_) => vm.memory.set(vm.pointer, 0)?,
+                    Ok(_) => tape.set(stdin_buf[0])?,
+                    Err(_) => tape.set(0)?,
                 }
             }
             Bytecode::Out { delta } => {
-                vm.step_ptr((*delta) as isize);
-                stdout.write(&[vm.memory.get(vm.pointer)?])?;
-                if vm.flush {
+                tape.step(*delta as isize);
+                stdout.write(&[tape.get()?])?;
+                if program.flush {
                     stdout.flush()?;
                 }
             }
 
             Bytecode::JmpIfZero { delta, addr_abs } => {
-                vm.step_ptr((*delta) as isize);
-                if vm.memory.get(vm.pointer)? == 0 {
-                    vm.pc = (*addr_abs) as usize;
+                tape.step(*delta as isize);
+                if tape.get()? == 0 {
+                    program.jump_abs(*addr_abs as usize);
                     continue;
                 }
             }
             Bytecode::JmpIfNotZero { delta, addr_abs } => {
-                vm.step_ptr((*delta) as isize);
-                if vm.memory.get(vm.pointer)? != 0 {
-                    vm.pc = (*addr_abs) as usize;
+                tape.step(*delta as isize);
+                if tape.get()? != 0 {
+                    program.jump_abs((*addr_abs) as usize);
                     continue;
                 }
             }
             Bytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
-                vm.step_ptr((*delta) as isize);
-                if range.contains(&(vm.pointer as u16)) {
-                    if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc -= (*addr_back) as usize;
+                tape.step(*delta as isize);
+                if range.contains(&(tape.data_pointer as u16)) {
+                    if tape.get()? != 0 {
+                        program.jump_back(*addr_back as usize);
                     } else {
-                        vm.pc += 1;
+                        program.step();
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
-                if vm.memory.get(vm.pointer)? != 0 {
-                    vm.pc -= (*addr_back) as usize;
+                if tape.get()? != 0 {
+                    program.jump_back(*addr_back as usize);
                     continue;
                 }
             }
             Bytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
-                vm.step_ptr((*delta) as isize);
-                if range.contains(&(vm.pointer as u16)) {
-                    if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc -= (*addr_back) as usize;
+                tape.step(*delta as isize);
+                if range.contains(&(tape.data_pointer as u16)) {
+                    if tape.get()? != 0 {
+                        program.jump_back(*addr_back as usize);
                     } else {
-                        vm.pc += 1;
+                        program.step();
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
-                if vm.memory.get(vm.pointer)? != 0 {
-                    vm.pc -= (*addr_back) as usize;
+                if tape.get()? != 0 {
+                    program.jump_back(*addr_back as usize);
                     continue;
                 }
             }
             Bytecode::BothRangeCheckJNZ { delta, addr_back, range } => {
-                vm.step_ptr((*delta) as isize);
-                if range.contains(&(vm.pointer as u16)) {
-                    if vm.memory.get(vm.pointer)? != 0 {
-                        vm.pc -= (*addr_back) as usize;
+                tape.step(*delta as isize);
+                if range.contains(&(tape.data_pointer as u16)) {
+                    if tape.get()? != 0 {
+                        program.jump_back(*addr_back as usize);
                     } else {
-                        vm.pc += 1;
+                        program.step();
                     }
                     return Ok(InterpreterResult::ToggleTier(Tier::Opt));
                 }
-                if vm.memory.get(vm.pointer)? != 0 {
-                    vm.pc -= (*addr_back) as usize;
+                if tape.get()? != 0 {
+                    program.jump_back(*addr_back as usize);
                     continue;
                 }
             }
 
             Bytecode::End { delta } => {
-                vm.step_ptr((*delta) as isize);
+                tape.step(*delta as isize);
                 return Ok(InterpreterResult::End);
             }
         }
-        vm.pc += 1;
+        program.step();
     }
 }
