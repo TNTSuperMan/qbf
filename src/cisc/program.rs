@@ -19,6 +19,9 @@ impl<'a> Program<'a> {
     pub fn pc(&self) -> usize {
         self.pc
     }
+    pub fn insts(&self) -> &[Bytecode] {
+        self.insts
+    }
     pub fn inst(&self) -> &Bytecode {
         &self.insts[self.pc]
     }
