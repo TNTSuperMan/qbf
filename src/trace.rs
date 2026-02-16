@@ -1,9 +1,7 @@
-#[cfg(feature = "debug")]
 pub struct OperationCountMap {
     pub deopt: Vec<usize>,
     pub opt: Vec<usize>,
 }
-#[cfg(feature = "debug")]
 impl OperationCountMap {
     pub fn new(len: usize) -> OperationCountMap {
         OperationCountMap {
@@ -13,19 +11,8 @@ impl OperationCountMap {
     }
 }
 
-#[cfg(not(feature = "debug"))]
-pub struct OperationCountMap;
-#[cfg(not(feature = "debug"))]
-impl OperationCountMap {
-    pub fn new(_len: usize) -> OperationCountMap {
-        OperationCountMap
-    }
-}
-
-#[cfg(feature = "debug")]
 use crate::{ir::IR, range::RangeInfo};
 
-#[cfg(feature = "debug")]
 pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
     let mut str = String::new();
     let mut lv: usize = 0;

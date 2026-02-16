@@ -1,5 +1,7 @@
-use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, trace::write_trace, vm::{UnsafeInsts, UnsafeVM, VM}}, ir::IR, range::RangeInfo};
+use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, trace::write_trace, vm::{UnsafeInsts, UnsafeVM, VM}}, error::BrainrotError, ir::IR, range::RangeInfo};
 
+mod memory;
+pub mod error;
 mod bytecode;
 mod interpret_deopt;
 mod interpret_opt;
@@ -7,9 +9,9 @@ mod trace;
 mod vm;
 mod internal;
 
-pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<(), String> {
+pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<(), BrainrotError> {
     let insts = ir_to_bytecodes(ir_nodes, range_info)?;
-    let mut vm = VM::new(insts.len(), flush)?;
+    let mut vm = VM::new(insts.len(), flush);
     let mut tier = if range_info.do_opt_first {
         Tier::Opt
     } else {
@@ -43,14 +45,18 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: 
                 println!("[TRACE] tier switch to {:?}", t);
                 tier = t;
             }
-            Err(msg) => {
+            Err(err) => {
                 if cfg!(feature = "debug") {
                     if out_dump {
                         write_trace(&vm, &insts);
                     }
                     println!("PC: {}({:?}), ptr: {}", vm.pc, insts[vm.pc], vm.pointer);
                 }
-                return Err(msg);
+                return Err(BrainrotError::RuntimeError {
+                    err,
+                    pc: vm.pc,
+                    pointer: vm.pointer,
+                });
             }
         }
     }

@@ -1,8 +1,8 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::{cisc::{bytecode::Bytecode, internal::{InterpreterResult, Tier}, vm::VM}};
+use crate::cisc::{bytecode::Bytecode, error::RuntimeError, internal::{InterpreterResult, Tier}, vm::VM};
 
-pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, String> {
+pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, RuntimeError> {
     let mut stdout = stdout().lock();
     let mut stdin = stdin().lock();
     let mut stdin_buf: [u8; 1] = [0];
@@ -259,9 +259,9 @@ pub fn run_deopt(vm: &mut VM, insts: &[Bytecode]) -> Result<InterpreterResult, S
             }
             Bytecode::Out { delta } => {
                 vm.step_ptr((*delta) as isize);
-                stdout.write(&[vm.memory.get(vm.pointer)?]).map_err(|_| "Runtime Error: Failed to print")?;
+                stdout.write(&[vm.memory.get(vm.pointer)?])?;
                 if vm.flush {
-                    stdout.flush().map_err(|_| "Runtime Error: Failed to flush")?;
+                    stdout.flush()?;
                 }
             }
 

@@ -1,8 +1,8 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::cisc::{bytecode::Bytecode, internal::{InterpreterResult, Tier}, vm::{UnsafeInsts, UnsafeVM}};
+use crate::cisc::{bytecode::Bytecode, error::RuntimeError, internal::{InterpreterResult, Tier}, vm::{UnsafeInsts, UnsafeVM}};
 
-pub unsafe fn run_opt(vm: &mut UnsafeVM, insts: &mut UnsafeInsts) -> Result<InterpreterResult, String> {
+pub unsafe fn run_opt(vm: &mut UnsafeVM, insts: &mut UnsafeInsts) -> Result<InterpreterResult, RuntimeError> {
     let mut stdout = stdout().lock();
     let mut stdin = stdin().lock();
     let mut stdin_buf: [u8; 1] = [0];
@@ -243,9 +243,9 @@ pub unsafe fn run_opt(vm: &mut UnsafeVM, insts: &mut UnsafeInsts) -> Result<Inte
             }
             Bytecode::Out { delta } => {
                 vm.step_ptr((*delta) as isize);
-                stdout.write(&[vm.get()]).map_err(|_| "Runtime Error: Failed to print")?;
+                stdout.write(&[vm.get()])?;
                 if vm.inner.flush {
-                    stdout.flush().map_err(|_| "Runtime Error: Failed to flush")?;
+                    stdout.flush()?;
                 }
             }
 
