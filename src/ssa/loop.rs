@@ -61,9 +61,5 @@ pub fn try_2step_loop(history: &PointerSSAHistory) -> Option<(PointerSSAHistory,
         second_history.get_history_mut(*i)[0] = SSAOp::Value(SSAValue::Const(*c));
     }
 
-    let second_in = inline_ssa_history(&second_history, true);
-    let second_in2 = inline_ssa_history(&second_in, true);
-    let second_in3 = inline_ssa_history(&second_in2, true);
-
-    Some((second_in3, const_lasts.iter().map(|(i,_)| *i).collect()))
+    Some((inline_ssa_history(&second_history, true), const_lasts.iter().map(|(i,_)| *i).collect()))
 }

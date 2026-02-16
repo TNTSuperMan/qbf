@@ -166,17 +166,15 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                     let ssa = build_ssa_from_ir(children);
                     if cfg!(feature = "debug") && ssa.is_some() {
                         let r_ssa = ssa.unwrap();
-                        let in1 = inline_ssa_history(&r_ssa, false);
-                        let in2 = inline_ssa_history(&in1, false);
-                        let in3 = inline_ssa_history(&in2, false);
-                        if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&in3) {
+                        let inlined = inline_ssa_history(&r_ssa, false);
+                        if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&inlined) {
                             println!("{start} LOOP [{loop_el}] {loop_ssa:?}");
 
                             let sec = try_2step_loop(&loop_ssa);
                             println!("{sec:?}\n");
                         } else {
-                            let order = resolve_eval_order(&in3);
-                            println!("{start} notloop {in3:?}\n{order:?}\n");
+                            let order = resolve_eval_order(&inlined);
+                            println!("{start} notloop {inlined:?}\n{order:?}\n");
                         }
                     }
 
