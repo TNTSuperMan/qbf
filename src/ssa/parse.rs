@@ -1,4 +1,4 @@
-use crate::{ir::{IR, IROp}, ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue}};
+use crate::{ir::{IR, IROp}, ssa::structs::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue}};
 
 pub fn build_ssa_from_ir(ir_nodes: &[IR]) -> Option<PointerSSAHistory> {
     let mut ssa_history: PointerSSAHistory = PointerSSAHistory::new();

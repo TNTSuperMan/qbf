@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{ir::{IR, IROp}, ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue}};
+use crate::{ir::{IR, IROp}, ssa::structs::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue}};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SSAValueIR {

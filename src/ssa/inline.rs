@@ -1,4 +1,4 @@
-use crate::ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue};
+use crate::ssa::structs::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue};
 
 impl PointerSSAHistory {
     fn get_val(&self, ver: PointerVersion, inline_raw: bool) -> SSAValue {

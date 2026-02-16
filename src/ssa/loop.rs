@@ -1,4 +1,4 @@
-use crate::ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue, inline::inline_ssa_history};
+use crate::ssa::{structs::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue}, inline::inline_ssa_history};
 
 pub fn detect_ssa_loop(history: &PointerSSAHistory) -> Option<(isize, PointerSSAHistory)> {
     let loop_el_opt = history.iter().find(|(&ptr, h)| {
