@@ -1,6 +1,8 @@
+use std::io;
+
 use thiserror::Error;
 
-use crate::cisc::error::{OptimizationError, RuntimeError};
+use crate::{cisc::error::{OptimizationError, RuntimeError}, range::RangeError};
 
 #[derive(Error, Debug)]
 pub enum SyntaxError {
@@ -24,4 +26,10 @@ pub enum BrainrotError {
         pc: usize,
         pointer: usize,
     },
+
+    #[error("RangeError: {0}")]
+    RangeError(#[from] RangeError),
+
+    #[error("IOError: {0}")]
+    IOError(#[from] io::Error),
 }
