@@ -8,7 +8,7 @@ pub struct Program<'a> {
 }
 
 impl<'a> Program<'a> {
-    pub fn new(bytecodes: &[Bytecode], flush: bool) -> Program {
+    pub fn new(bytecodes: &'a [Bytecode], flush: bool) -> Program<'a> {
         let ocm = OperationCountMap::new(bytecodes.len());
         Program {
             ocm,
