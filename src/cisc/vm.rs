@@ -1,4 +1,4 @@
-use crate::{cisc::bytecode::Bytecode, memory::Memory, trace::OperationCountMap};
+use crate::{cisc::{bytecode::Bytecode, memory::Memory}, trace::OperationCountMap};
 
 pub struct VM {
     pub memory: Memory,
