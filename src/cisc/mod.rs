@@ -45,14 +45,18 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: 
                 println!("[TRACE] tier switch to {:?}", t);
                 tier = t;
             }
-            Err(msg) => {
+            Err(err) => {
                 if cfg!(feature = "debug") {
                     if out_dump {
                         write_trace(&vm, &insts);
                     }
                     println!("PC: {}({:?}), ptr: {}", vm.pc, insts[vm.pc], vm.pointer);
                 }
-                return Err(msg);
+                return Err(BrainrotError::RuntimeError {
+                    err,
+                    pc: vm.pc,
+                    pointer: vm.pointer,
+                });
             }
         }
     }
