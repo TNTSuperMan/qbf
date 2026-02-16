@@ -1,6 +1,6 @@
 use std::io::{Read, Write, stdin, stdout};
 
-use crate::cisc::{bytecode::Bytecode, error::RuntimeError, internal::{InterpreterResult, Tier}, memory::Tape, vm::Program};
+use crate::cisc::{bytecode::Bytecode, error::RuntimeError, internal::{InterpreterResult, Tier}, tape::Tape, program::Program};
 
 pub fn run_deopt(tape: &mut Tape, program: &mut Program) -> Result<InterpreterResult, RuntimeError> {
     let mut stdout = stdout().lock();

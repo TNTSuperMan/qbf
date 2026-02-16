@@ -1,4 +1,4 @@
-use crate::cisc::{vm::Program, bytecode::Bytecode};
+use crate::cisc::{program::Program, bytecode::Bytecode};
 
 #[cfg(feature = "debug")]
 use crate::trace::OperationCountMap;

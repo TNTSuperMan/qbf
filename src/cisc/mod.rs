@@ -1,12 +1,12 @@
-use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, memory::{Tape, UnsafeTape}, trace::write_trace, vm::{Program, UnsafeProgram}}, error::BrainrotError, ir::IR, range::RangeInfo};
+use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, tape::{Tape, UnsafeTape}, trace::write_trace, program::{Program, UnsafeProgram}}, error::BrainrotError, ir::IR, range::RangeInfo};
 
-mod memory;
+mod tape;
 pub mod error;
 mod bytecode;
 mod interpret_deopt;
 mod interpret_opt;
 mod trace;
-mod vm;
+mod program;
 mod internal;
 
 pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<(), BrainrotError> {
