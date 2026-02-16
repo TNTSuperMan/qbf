@@ -26,9 +26,8 @@ pub enum IROp {
     LoopEnd(usize), // start
     LoopEndWithOffset(usize, isize), // start, diff
 
-    StartSSA,
-    PushSSA(SSAOpIR),
-    AssignSSA(u8), // 連番
+    SetSSA(u8, SSAOpIR),
+    AssignSSA(u8),
 
     End,
 }
