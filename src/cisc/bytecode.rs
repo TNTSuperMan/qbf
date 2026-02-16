@@ -117,15 +117,16 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         }
                     }
 
-                    IROp::Shift(step) => {
+                    IROp::Shift(step_isize) => {
+                        let step: i16 = (*step_isize).try_into().map_err(|e| OptimizationError::ShiftStep(e))?;
                         let mid_range = range_info.map.get(&i).unwrap();
                         if let MidRange::Both(range) = mid_range {
-                            bytecodes.push(Bytecode::Shift { delta, step: *step as i16 });
+                            bytecodes.push(Bytecode::Shift { delta, step });
                             bytecodes.push(Bytecode::BothRangeCheck { range: range.clone() });
                             i += 1;
                             continue;
                         }
-                        if let Ok(step_i8) = i8::try_from(*step) {
+                        if let Ok(step_i8) = i8::try_from(step) {
                             match ir_nodes[i + 1] {
                                 IR { opcode: IROp::Add(val), pointer: ptr } => {
                                     let delta2 = i8::try_from(ptr - last_ptr).map_err(|e| OptimizationError::Delta(e))?;
@@ -155,14 +156,14 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             }
                         }
                         match mid_range {
-                            MidRange::None => bytecodes.push(Bytecode::Shift { delta, step: *step as i16 }),
-                            MidRange::Positive(range) => bytecodes.push(Bytecode::ShiftP { delta, step: *step as i16, range: *range }),
-                            MidRange::Negative(range) => bytecodes.push(Bytecode::ShiftN { delta, step: *step as i16, range: range.clone() }),
+                            MidRange::None => bytecodes.push(Bytecode::Shift { delta, step }),
+                            MidRange::Positive(range) => bytecodes.push(Bytecode::ShiftP { delta, step, range: *range }),
+                            MidRange::Negative(range) => bytecodes.push(Bytecode::ShiftN { delta, step, range: range.clone() }),
                             MidRange::Both { .. } => { unreachable!(); /* 上でMemoryRange::Bothは処理済みのはず */ }
                         };
                     }
                     IROp::MulAndSetZero(dests) => {
-                        let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
+                        let skip_pc: u32 = (bytecodes.len() + dests.len() + 1).try_into().map_err(|e| OptimizationError::ProgramAbs(e))?;
 
                         bytecodes.push(Bytecode::MulStart { delta, jz_abs: skip_pc });
 
@@ -182,7 +183,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                                 (false, false) => bytecodes.push(Bytecode::DoubleMoveSubSub { delta, to1: delta1, to2: delta2 }),
                             };
                         } else {
-                            let skip_pc = (bytecodes.len() + dests.len() + 1) as u32;
+                            let skip_pc: u32 = (bytecodes.len() + dests.len() + 1).try_into().map_err(|e| OptimizationError::ProgramAbs(e))?;
 
                             bytecodes.push(Bytecode::MoveStart { delta, jz_abs: skip_pc });
 
@@ -227,11 +228,11 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         let start = loop_stack.pop().unwrap();
                         let end = bytecodes.len();
                         if let Bytecode::JmpIfZero { addr_abs: addr, .. } = &mut bytecodes[start] {
-                            *addr = (end + 1) as u32;
+                            *addr = (end + 1).try_into().map_err(|e| OptimizationError::ProgramAbs(e))?;
                         } else {
                             panic!("InternalError: Corresponding JmpIfZero is not hit");
                         }
-                        bytecodes.push(Bytecode::JmpIfNotZero { delta, addr_abs: (start + 1) as u32 });
+                        bytecodes.push(Bytecode::JmpIfNotZero { delta, addr_abs: (start + 1).try_into().map_err(|e| OptimizationError::ProgramAbs(e))? });
                     }
                     IROp::LoopEndWithOffset(_start, offset) => {
                         let range = range_info.map.get(&i).unwrap();
@@ -239,16 +240,16 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         let end = bytecodes.len();
                         last_ptr -= offset;
                         if let Bytecode::JmpIfZero { addr_abs: addr, .. } = &mut bytecodes[start] {
-                            *addr = (end + 1) as u32;
+                            *addr = (end + 1).try_into().map_err(|e| OptimizationError::ProgramAbs(e))?;
                         } else {
                             panic!("InternalError: Corresponding JmpIfZero is not hit");
                         }
-                        let subrel = end - start - 1;
+                        let subrel = (end - start - 1).try_into().map_err(|e| OptimizationError::ProgramRel(e));
                         match range {
-                            MidRange::None => bytecodes.push(Bytecode::JmpIfNotZero { delta, addr_abs: (start + 1) as u32 }),
-                            MidRange::Positive(range) => bytecodes.push(Bytecode::PositiveRangeCheckJNZ { delta, addr_back: subrel as u16, range: *range }),
-                            MidRange::Negative(range) => bytecodes.push(Bytecode::NegativeRangeCheckJNZ { delta, addr_back: subrel as u16, range: range.clone() }),
-                            MidRange::Both(range) => bytecodes.push(Bytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|e| OptimizationError::Delta(e))?, addr_back: subrel as u16, range: range.clone() }),
+                            MidRange::None => bytecodes.push(Bytecode::JmpIfNotZero { delta, addr_abs: (start + 1).try_into().map_err(|e| OptimizationError::ProgramAbs(e))? }),
+                            MidRange::Positive(range) => bytecodes.push(Bytecode::PositiveRangeCheckJNZ { delta, addr_back: subrel?, range: *range }),
+                            MidRange::Negative(range) => bytecodes.push(Bytecode::NegativeRangeCheckJNZ { delta, addr_back: subrel?, range: range.clone() }),
+                            MidRange::Both(range) => bytecodes.push(Bytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|e| OptimizationError::Delta(e))?, addr_back: subrel?, range: range.clone() }),
                         }
                     }
 
