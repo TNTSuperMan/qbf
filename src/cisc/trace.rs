@@ -1,14 +1,17 @@
-use crate::cisc::{vm::VM, bytecode::Bytecode};
+#[cfg(feature = "debug")]
+use std::io;
+
+use crate::cisc::{program::Program, bytecode::Bytecode};
 
 #[cfg(feature = "debug")]
-use crate::trace::OperationCountMap;
+use crate::cisc::tape::Tape;
 
 #[cfg(feature = "debug")]
-pub fn generate_bytecode_trace(bytecodes: &[Bytecode], ocm: &OperationCountMap) -> String {
+pub fn generate_bytecode_trace(program: &Program) -> String {
     let mut str = String::new();
     let mut lv: usize = 0;
 
-    for (i, b) in bytecodes.iter().enumerate() {
+    for (i, b) in program.insts().iter().enumerate() {
         match b {
             Bytecode::JmpIfNotZero { .. } => lv -= 1,
             Bytecode::PositiveRangeCheckJNZ { .. } => lv -= 1,
@@ -16,25 +19,27 @@ pub fn generate_bytecode_trace(bytecodes: &[Bytecode], ocm: &OperationCountMap) 
             Bytecode::BothRangeCheckJNZ { .. } => lv -= 1,
             _ => {}
         }
-        str += &format!("{}\t{}\t{}{:?}\n", (ocm.deopt[i].wrapping_add(1) as f64).log2().floor(), (ocm.opt[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
+        str += &format!("{}\t{}\t{}{:?}\n", (program.ocm.deopt[i].wrapping_add(1) as f64).log2().floor(), (program.ocm.opt[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
         match b {
             Bytecode::JmpIfZero { .. } => lv += 1,
             _ => {}
         }
     }
-    str += &format!("step count(deopt/opt): {}/{}", ocm.deopt.iter().fold(0, |acc, e| acc + e), ocm.opt.iter().fold(0, |acc, e| acc + e));
+    str += &format!("step count(deopt/opt): {}/{}", program.ocm.deopt.iter().fold(0, |acc, e| acc + e), program.ocm.opt.iter().fold(0, |acc, e| acc + e));
 
     str
 }
 
 #[cfg(not(feature = "debug"))]
-pub fn write_trace(vm: &VM, insts: &[Bytecode]) {}
+pub fn write_trace(tape: &Tape, program: &Program) {}
 
 #[cfg(feature = "debug")]
-pub fn write_trace(vm: &VM, insts: &[Bytecode]) {
+pub fn write_trace(tape: &Tape, program: &Program) -> Result<(), io::Error> {
     use std::fs;
     use crate::cisc::trace::generate_bytecode_trace;
 
-    fs::write("./box/bytecodes", generate_bytecode_trace(&insts, &vm.ocm)).expect("failed to write");
-    fs::write("./box/memory", *vm.memory.0).expect("failed to write");
+    fs::write("./box/memory", *tape.buffer)?;
+    fs::write("./box/bytecodes", generate_bytecode_trace(&program))?;
+
+    Ok(())
 }
