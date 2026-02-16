@@ -82,13 +82,25 @@ impl<'a> UnsafeTape<'a> {
     pub unsafe fn step_ptr(&mut self, delta: isize) {
         self.data_pointer = self.data_pointer.wrapping_add(delta as usize);
     }
+
+    pub fn get_safe(&self, abs_ptr: usize) -> Result<u8, RuntimeError> {
+        self.inner.buffer.get(abs_ptr).ok_or_else(|| RuntimeError::OOBGet(abs_ptr)).copied()
+    }
     pub unsafe fn get(&self) -> u8 {
         if cfg!(feature = "debug") { self.rangecheck(0); }
         *self.data_pointer
     }
+    pub fn set_safe(&mut self, abs_ptr: usize, value: u8) -> Result<(), RuntimeError> {
+        let cell = self.inner.buffer.get_mut(abs_ptr).ok_or_else(|| RuntimeError::OOBSet(abs_ptr, value))?;
+        Ok(*cell = value)
+    }
     pub unsafe fn set(&mut self, value: u8) {
         if cfg!(feature = "debug") { self.rangecheck(0); }
         *self.data_pointer = value;
+    }
+    pub fn add_safe(&mut self, abs_ptr: usize, value: u8) -> Result<(), RuntimeError> {
+        let cell = self.inner.buffer.get_mut(abs_ptr).ok_or_else(|| RuntimeError::OOBSet(abs_ptr, value))?;
+        Ok(*cell = cell.wrapping_add(value))
     }
     pub unsafe fn add(&mut self, value: u8) {
         if cfg!(feature = "debug") { self.rangecheck(0); }

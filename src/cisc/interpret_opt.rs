@@ -10,7 +10,8 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
     
     loop {
         if cfg!(feature = "debug") {
-            program.inner.ocm.opt[program.pc()] += 1;
+            let pc = program.pc();
+            program.inner.ocm.opt[pc] += 1;
         }
 
         if cfg!(feature = "trace") {
@@ -64,13 +65,13 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::Shift { delta, step } => {
                 tape.step_ptr((*delta) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
             }
             Bytecode::ShiftP { delta, step, range } => {
                 tape.step_ptr((*delta) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 if !range.contains(&(tape.get_ptr() as u16)) {
@@ -80,7 +81,7 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::ShiftN { delta, step, range } => {
                 tape.step_ptr((*delta) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 if !range.contains(&(tape.get_ptr() as u16)) {
@@ -90,7 +91,7 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::ShiftAdd { delta1, step, delta2, val } => {
                 tape.step_ptr((*delta1) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 tape.step_ptr((*delta2) as isize);
@@ -98,12 +99,12 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::ShiftAddP { delta1, step, delta2, val, range } => {
                 tape.step_ptr((*delta1) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 if !range.contains(&(tape.get_ptr() as u16)) {
                     tape.step_ptr((*delta2) as isize);
-                    tape.inner.add(tape.get_ptr(), *val)?;
+                    tape.add_safe(tape.get_ptr(), *val)?;
                     program.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -112,12 +113,12 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::ShiftAddN { delta1, step, delta2, val, range } => {
                 tape.step_ptr((*delta1) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 if !range.contains(&(tape.get_ptr() as u16)) {
                     tape.step_ptr((*delta2) as isize);
-                    tape.inner.add(tape.get_ptr(), *val)?;
+                    tape.add_safe(tape.get_ptr(), *val)?;
                     program.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -126,7 +127,7 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::ShiftSet { delta1, step, delta2, val } => {
                 tape.step_ptr((*delta1) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 tape.step_ptr((*delta2) as isize);
@@ -134,12 +135,12 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::ShiftSetP { delta1, step, delta2, val, range } => {
                 tape.step_ptr((*delta1) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 if !range.contains(&(tape.get_ptr() as u16)) {
                     tape.step_ptr((*delta2) as isize);
-                    tape.inner.set(tape.get_ptr(), *val)?;
+                    tape.set_safe(tape.get_ptr(), *val)?;
                     program.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -148,12 +149,12 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             }
             Bytecode::ShiftSetN { delta1, step, delta2, val, range } => {
                 tape.step_ptr((*delta1) as isize);
-                while tape.inner.get(tape.get_ptr())? != 0 {
+                while tape.get_safe(tape.get_ptr())? != 0 {
                     tape.step_ptr((*step) as isize);
                 }
                 if !range.contains(&(tape.get_ptr() as u16)) {
                     tape.step_ptr((*delta2) as isize);
-                    tape.inner.set(tape.get_ptr(), *val)?;
+                    tape.set_safe(tape.get_ptr(), *val)?;
                     program.jump_one();
                     return Ok(InterpreterResult::ToggleTier(Tier::Deopt));
                 }
@@ -266,7 +267,7 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             Bytecode::PositiveRangeCheckJNZ { delta, addr_back, range } => {
                 tape.step_ptr((*delta) as isize);
                 if !range.contains(&(tape.get_ptr() as u16)) {
-                    if tape.inner.get(tape.get_ptr())? != 0 {
+                    if tape.get_safe(tape.get_ptr())? != 0 {
                         program.jump_back(*addr_back);
                     } else {
                         program.jump_one();
@@ -281,7 +282,7 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
             Bytecode::NegativeRangeCheckJNZ { delta, addr_back, range } => {
                 tape.step_ptr((*delta) as isize);
                 if !range.contains(&(tape.get_ptr() as u16)) {
-                    if tape.inner.get(tape.get_ptr())? != 0 {
+                    if tape.get_safe(tape.get_ptr())? != 0 {
                         program.jump_back(*addr_back);
                     } else {
                         program.jump_one();
@@ -297,7 +298,7 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
                 tape.step_ptr((*delta) as isize);
                 let ptr = tape.get_ptr();
                 if !range.contains(&(ptr as u16)) {
-                    if tape.inner.get(ptr)? != 0 {
+                    if tape.get_safe(ptr)? != 0 {
                         program.jump_back(*addr_back);
                     } else {
                         program.jump_one();
