@@ -1,4 +1,4 @@
-use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, trace::write_trace, vm::{UnsafeInsts, UnsafeVM, VM}}, error::BrainrotError, ir::IR, range::RangeInfo};
+use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, memory::{Tape, UnsafeTape}, trace::write_trace, vm::{Program, UnsafeProgram}}, error::BrainrotError, ir::IR, range::RangeInfo};
 
 mod memory;
 pub mod error;
@@ -11,7 +11,8 @@ mod internal;
 
 pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<(), BrainrotError> {
     let insts = ir_to_bytecodes(ir_nodes, range_info)?;
-    let mut vm = VM::new(insts.len(), flush);
+    let mut tape = Tape::new();
+    let mut program = Program::new(&insts, flush);
     let mut tier = if range_info.do_opt_first {
         Tier::Opt
     } else {
@@ -22,21 +23,15 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: 
 
     loop {
         let result = match tier {
-            Tier::Deopt => run_deopt(&mut vm, &insts),
+            Tier::Deopt => run_deopt(&mut tape, &mut program),
             Tier::Opt => unsafe {
-                let mut insts = UnsafeInsts::new(&insts, vm.pc);
-                let run_res = {
-                    let mut unsafe_vm = UnsafeVM::new(&mut vm);
-                    run_opt(&mut unsafe_vm, &mut insts)
-                };
-                vm.pc = insts.get_pc();
-                run_res
+                run_opt(&mut UnsafeTape::new(&mut tape), &mut UnsafeProgram::new(&mut program))
             },
         };
         match result {
             Ok(InterpreterResult::End) => {
                 if cfg!(feature = "debug") && out_dump {
-                    write_trace(&vm, &insts);
+                    write_trace(&program, &insts);
                 }
                 return Ok(());
             }
@@ -46,16 +41,17 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: 
                 tier = t;
             }
             Err(err) => {
+                let pc = program.pc();
                 if cfg!(feature = "debug") {
                     if out_dump {
-                        write_trace(&vm, &insts);
+                        write_trace(&program, &insts);
                     }
-                    println!("PC: {}({:?}), ptr: {}", vm.pc, insts[vm.pc], vm.pointer);
+                    println!("PC: {}({:?}), ptr: {}", pc, program.inst(), tape.data_pointer);
                 }
                 return Err(BrainrotError::RuntimeError {
                     err,
-                    pc: vm.pc,
-                    pointer: vm.pointer,
+                    pc,
+                    pointer: tape.data_pointer,
                 });
             }
         }

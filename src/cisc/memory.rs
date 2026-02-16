@@ -56,3 +56,70 @@ impl Tape {
         self.data_pointer = self.data_pointer.wrapping_add_signed(delta);
     }
 }
+pub struct UnsafeTape<'a> {
+    pub inner: &'a mut Tape,
+    buffer_at: *mut u8,
+    data_pointer: *mut u8,
+}
+#[allow(unused)]
+impl<'a> UnsafeTape<'a> {
+    pub unsafe fn new(tape: &'a mut Tape) -> UnsafeTape<'a> {
+        let buffer_at = tape.buffer.as_mut_ptr();
+        let data_pointer = buffer_at.add(tape.data_pointer);
+        UnsafeTape { inner: tape, buffer_at, data_pointer }
+    }
+
+    pub fn get_ptr(&self) -> usize {
+        self.data_pointer.addr().wrapping_sub(self.buffer_at.addr())
+    }
+
+    pub fn rangecheck(&self, offset: isize) {
+        if MEMORY_LENGTH <= (self.get_ptr().wrapping_add_signed(offset)) {
+            panic!("[UNSAFE] Runtime Error: Out of range memory operation. Address: {} ", self.get_ptr());
+        }
+    }
+
+    pub unsafe fn step_ptr(&mut self, delta: isize) {
+        self.data_pointer = self.data_pointer.wrapping_add(delta as usize);
+    }
+    pub unsafe fn get(&self) -> u8 {
+        if cfg!(feature = "debug") { self.rangecheck(0); }
+        *self.data_pointer
+    }
+    pub unsafe fn set(&mut self, value: u8) {
+        if cfg!(feature = "debug") { self.rangecheck(0); }
+        *self.data_pointer = value;
+    }
+    pub unsafe fn add(&mut self, value: u8) {
+        if cfg!(feature = "debug") { self.rangecheck(0); }
+        *self.data_pointer = (*self.data_pointer).wrapping_add(value);
+    }
+    pub unsafe fn sub(&mut self, value: u8) {
+        if cfg!(feature = "debug") { self.rangecheck(0); }
+        *self.data_pointer = (*self.data_pointer).wrapping_sub(value);
+    }
+
+    pub unsafe fn get_with_offset(&self, offset: isize) -> u8 {
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
+        *(self.data_pointer.wrapping_add(offset as usize))
+    }
+    pub unsafe fn set_with_offset(&mut self, offset: isize, value: u8) {
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
+        *(self.data_pointer.wrapping_add(offset as usize)) = value;
+    }
+    pub unsafe fn add_with_offset(&mut self, offset: isize, value: u8) {
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
+        let p = self.data_pointer.wrapping_add(offset as usize);
+        *p = (*p).wrapping_add(value);
+    }
+    pub unsafe fn sub_with_offset(&mut self, offset: isize, value: u8) {
+        if cfg!(feature = "debug") { self.rangecheck(offset); }
+        let p = self.data_pointer.wrapping_add(offset as usize);
+        *p = (*p).wrapping_sub(value);
+    }
+}
+impl<'a> Drop for UnsafeTape<'a> {
+    fn drop(&mut self) {
+        self.inner.data_pointer = self.get_ptr();
+    }
+}
