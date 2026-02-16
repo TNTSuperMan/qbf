@@ -1,4 +1,4 @@
-use crate::ssa::{inline::inline_ssa_history, r#loop::detect_ssa_loop, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}};
+use crate::ssa::{inline::inline_ssa_history, r#loop::{detect_ssa_loop, try_2step_loop}, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}};
 
 use crate::error::SyntaxError;
 
@@ -166,14 +166,17 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                     let ssa = build_ssa_from_ir(children);
                     if cfg!(feature = "debug") && ssa.is_some() {
                         let r_ssa = ssa.unwrap();
-                        let in1 = inline_ssa_history(&r_ssa);
-                        let in2 = inline_ssa_history(&in1);
-                        let in3 = inline_ssa_history(&in2);
+                        let in1 = inline_ssa_history(&r_ssa, false);
+                        let in2 = inline_ssa_history(&in1, false);
+                        let in3 = inline_ssa_history(&in2, false);
                         let ir = ssa_to_ir(&in3);
                         println!("{start} {in3:?} {ir:?}");
                         if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&in3) {
                             let order = resolve_eval_order(&loop_ssa);
-                            println!("{start} {loop_el} {loop_ssa:?}\n{order:?}\n");
+                            println!("{start} {loop_el} {loop_ssa:?}\n{order:?}");
+
+                            let sec = try_2step_loop(&loop_ssa);
+                            println!("{sec:?}\n");
                         } else {
                             let order = resolve_eval_order(&in3);
                             println!("{start} {in3:?}\n{order:?}\n");

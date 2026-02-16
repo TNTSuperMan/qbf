@@ -1,4 +1,4 @@
-use crate::ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue};
+use crate::ssa::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue, inline::inline_ssa_history};
 
 pub fn detect_ssa_loop(history: &PointerSSAHistory) -> Option<(isize, PointerSSAHistory)> {
     let loop_el_opt = history.iter().find(|(&ptr, h)| {
@@ -41,4 +41,28 @@ pub fn detect_ssa_loop(history: &PointerSSAHistory) -> Option<(isize, PointerSSA
             Some((loop_ptr, ret_history))
         },
     }
+}
+
+pub fn try_2step_loop(history: &PointerSSAHistory) -> Option<(PointerSSAHistory, Vec<isize>)> {
+    let mut const_lasts: Vec<(isize, u8)> = vec![];
+
+    for (i, h) in history.iter() {
+        if let SSAOp::Value(SSAValue::Const(v)) = h.last().unwrap() {
+            const_lasts.push((*i, *v));
+        }
+    }
+
+    if const_lasts.len() == 0 {
+        return None
+    }
+
+    let mut second_history = history.clone();
+    for (i, c) in const_lasts.iter() {
+        second_history.get_history_mut(*i)[0] = SSAOp::Value(SSAValue::Const(*c));
+    }
+
+    let second_in = inline_ssa_history(&second_history, true);
+    let second_in2 = inline_ssa_history(&second_in, true);
+
+    Some((second_in2, const_lasts.iter().map(|(i,_)| *i).collect()))
 }
