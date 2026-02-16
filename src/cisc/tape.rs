@@ -1,15 +1,13 @@
-use crate::cisc::error::RuntimeError;
-
-const MEMORY_LENGTH: usize = 65536;
+use crate::{TAPE_LENGTH, cisc::error::RuntimeError};
 
 pub struct Tape {
-    pub buffer: Box<[u8; MEMORY_LENGTH]>,
+    pub buffer: Box<[u8; TAPE_LENGTH]>,
     pub data_pointer: usize,
 }
 impl Tape {
     pub fn new() -> Tape {
         Tape {
-            buffer: Box::new([0; MEMORY_LENGTH]),
+            buffer: Box::new([0; TAPE_LENGTH]),
             data_pointer: 0,
         }
     }
@@ -58,7 +56,7 @@ impl<'a> UnsafeTape<'a> {
     }
 
     pub fn rangecheck(&self, offset: isize) {
-        if MEMORY_LENGTH <= (self.get_ptr().wrapping_add_signed(offset)) {
+        if TAPE_LENGTH <= (self.get_ptr().wrapping_add_signed(offset)) {
             panic!("[UNSAFE] Runtime Error: Out of range memory operation. Address: {} ", self.get_ptr());
         }
     }

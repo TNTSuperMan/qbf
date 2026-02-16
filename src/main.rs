@@ -1,5 +1,7 @@
 use std::{fs, process::ExitCode};
 
+const TAPE_LENGTH: usize = 65536;
+
 use crate::{cisc::run_cisc, error::BrainrotError, ir::parse_to_ir, range::generate_range_info};
 use clap::Parser;
 

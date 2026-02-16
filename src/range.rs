@@ -2,7 +2,7 @@ use std::{collections::HashMap, num::TryFromIntError, ops::{Range, RangeFrom, Ra
 
 use thiserror::Error;
 
-use crate::ir::{IR, IROp};
+use crate::{TAPE_LENGTH, ir::{IR, IROp}};
 
 #[derive(Error, Debug)]
 pub enum RangeError {
@@ -75,9 +75,9 @@ pub struct RangeInfo {
 impl RangeInfo {
     fn from(internal_ri: &InternalRangeState) -> Result<RangeInfo, RangeError> {
         let map_arr: Result<Vec<(usize, MidRange)>, RangeError> = internal_ri.map.iter().map(|(&ir_at, &RSMapElement { pointer, range: ref range_raw })| {
-            let range = (-(range_raw.start() - pointer))..(65536 - (range_raw.end() - pointer));
+            let range = (-(range_raw.start() - pointer))..((TAPE_LENGTH as isize) - (range_raw.end() - pointer));
 
-            match (range.start == 0, range.end == 65536) {
+            match (range.start == 0, range.end == (TAPE_LENGTH as isize)) {
                 (false, false) => {
                     let start: u16 = range.start.try_into().map_err(|e| RangeError::StartOverflow(e, range.start))?;
                     let end: u16 = range.end.try_into().map_err(|e| RangeError::EndOverflow(e, range.end))?;
@@ -98,7 +98,7 @@ impl RangeInfo {
         }).collect();
         Ok(RangeInfo {
             map: HashMap::from_iter(map_arr?),
-            do_opt_first: !(*internal_ri.curr.start() < 0) && !(*internal_ri.curr.end() >= 65536),
+            do_opt_first: !(*internal_ri.curr.start() < 0) && !(*internal_ri.curr.end() >= (TAPE_LENGTH as isize)),
         })
     }
 }
