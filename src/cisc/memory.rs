@@ -28,19 +28,7 @@ impl Tape {
         let cell = self.buffer.get_mut(self.data_pointer).ok_or_else(|| RuntimeError::OOBAdd(self.data_pointer, value))?;
         Ok(*cell = cell.wrapping_add(value))
     }
-    pub fn sub(&mut self, value: u8) -> Result<(), RuntimeError> {
-        let cell = self.buffer.get_mut(self.data_pointer).ok_or_else(|| RuntimeError::OOBSub(self.data_pointer, value))?;
-        Ok(*cell = cell.wrapping_sub(value))
-    }
-
-    pub fn get_with_offset(&self, delta: isize) -> Result<u8, RuntimeError> {
-        self.buffer.get(self.data_pointer.wrapping_add_signed(delta)).ok_or_else(|| RuntimeError::OOBGet(self.data_pointer)).copied()
-    }
-    pub fn set_with_offset(&mut self, delta: isize, value: u8) -> Result<(), RuntimeError> {
-        let ptr = self.data_pointer.wrapping_add_signed(delta);
-        let cell = self.buffer.get_mut(ptr).ok_or_else(|| RuntimeError::OOBSet(ptr, value))?;
-        Ok(*cell = value)
-    }
+    
     pub fn add_with_offset(&mut self, delta: isize, value: u8) -> Result<(), RuntimeError> {
         let ptr = self.data_pointer.wrapping_add_signed(delta);
         let cell = self.buffer.get_mut(ptr).ok_or_else(|| RuntimeError::OOBAdd(ptr, value))?;
@@ -61,7 +49,6 @@ pub struct UnsafeTape<'a> {
     buffer_at: *mut u8,
     data_pointer: *mut u8,
 }
-#[allow(unused)]
 impl<'a> UnsafeTape<'a> {
     pub unsafe fn new(tape: &'a mut Tape) -> UnsafeTape<'a> {
         let buffer_at = tape.buffer.as_mut_ptr();
@@ -105,19 +92,6 @@ impl<'a> UnsafeTape<'a> {
     pub unsafe fn add(&mut self, value: u8) {
         if cfg!(feature = "debug") { self.rangecheck(0); }
         *self.data_pointer = (*self.data_pointer).wrapping_add(value);
-    }
-    pub unsafe fn sub(&mut self, value: u8) {
-        if cfg!(feature = "debug") { self.rangecheck(0); }
-        *self.data_pointer = (*self.data_pointer).wrapping_sub(value);
-    }
-
-    pub unsafe fn get_with_offset(&self, offset: isize) -> u8 {
-        if cfg!(feature = "debug") { self.rangecheck(offset); }
-        *(self.data_pointer.wrapping_add(offset as usize))
-    }
-    pub unsafe fn set_with_offset(&mut self, offset: isize, value: u8) {
-        if cfg!(feature = "debug") { self.rangecheck(offset); }
-        *(self.data_pointer.wrapping_add(offset as usize)) = value;
     }
     pub unsafe fn add_with_offset(&mut self, offset: isize, value: u8) {
         if cfg!(feature = "debug") { self.rangecheck(offset); }
