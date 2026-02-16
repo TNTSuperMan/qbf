@@ -1,5 +1,6 @@
 use crate::{cisc::{bytecode::ir_to_bytecodes, internal::{InterpreterResult, Tier}, interpret_deopt::run_deopt, interpret_opt::run_opt, trace::write_trace, vm::{UnsafeInsts, UnsafeVM, VM}}, ir::IR, range::RangeInfo};
 
+mod error;
 mod bytecode;
 mod interpret_deopt;
 mod interpret_opt;

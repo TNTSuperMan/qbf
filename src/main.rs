@@ -3,6 +3,7 @@ use std::fs;
 use crate::{cisc::run_cisc, ir::parse_to_ir, range::generate_range_info};
 use clap::Parser;
 
+mod error;
 mod memory;
 mod ir;
 mod cisc;
