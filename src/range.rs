@@ -128,12 +128,6 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, RangeError> {
                     internal_ri.subscribe(*ptr);
                 }
             }
-            IROp::MoveAdd(dest) => {
-                internal_ri.subscribe(*dest);
-            }
-            IROp::MoveSub(dest) => {
-                internal_ri.subscribe(*dest);
-            }
             IROp::LoopStart(end) => {
                 internal_ri.pop_loopstart();
                 if let IROp::LoopEndWithOffset(..) = ir_nodes[*end].opcode {

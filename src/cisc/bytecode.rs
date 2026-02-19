@@ -73,7 +73,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     IROp::Breakpoint => {
                         bytecodes.push(Bytecode::Breakpoint { delta });
                     }
-
                     IROp::Add(val1) => {
                         match ir_nodes[i + 1] {
                             IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
@@ -116,7 +115,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             }
                         }
                     }
-
                     IROp::Shift(step_isize) => {
                         let step: i16 = (*step_isize).try_into().map_err(|e| OptimizationError::ShiftStep(e))?;
                         let mid_range = range_info.map.get(&i).unwrap();
@@ -172,7 +170,15 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         }
                     }
                     IROp::MovesAndSetZero(dests) => {
-                        if let [(p1, f1), (p2, f2)] = dests.iter().as_slice() {
+                        let dests_slice: &[(isize, bool)] = dests.iter().as_slice();
+                        if let [(ptr, flag)] = dests_slice {
+                            let to = i16::try_from(ptr.wrapping_sub(last_ptr)).map_err(|e| OptimizationError::Delta(e))?;
+
+                            match *flag {
+                                true  => bytecodes.push(Bytecode::SingleMoveAdd { delta, to }),
+                                false => bytecodes.push(Bytecode::SingleMoveSub { delta, to }),
+                            };
+                        } else if let [(p1, f1), (p2, f2)] = dests_slice {
                             let delta1 = i16::try_from(p1.wrapping_sub(last_ptr)).map_err(|e| OptimizationError::Delta(e))?;
                             let delta2 = i16::try_from(p2.wrapping_sub(last_ptr)).map_err(|e| OptimizationError::Delta(e))?;
 
@@ -200,18 +206,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             }
                         }
                     }
-                    IROp::MoveAdd(dest) => {
-                        bytecodes.push(Bytecode::SingleMoveAdd {
-                            delta,
-                            to: i16::try_from(dest - last_ptr).map_err(|e| OptimizationError::Delta(e))?,
-                        });
-                    }
-                    IROp::MoveSub(dest) => {
-                        bytecodes.push(Bytecode::SingleMoveSub {
-                            delta,
-                            to: i16::try_from(dest - last_ptr).map_err(|e| OptimizationError::Delta(e))?,
-                        });
-                    }
 
                     IROp::In => {
                         bytecodes.push(Bytecode::In { delta });
@@ -219,7 +213,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     IROp::Out => {
                         bytecodes.push(Bytecode::Out { delta });
                     }
-
                     IROp::LoopStart(_end) => {
                         loop_stack.push(bytecodes.len());
                         bytecodes.push(Bytecode::JmpIfZero { delta, addr_abs: u32::MAX });
@@ -252,7 +245,8 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             MidRange::Both(range) => bytecodes.push(Bytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|e| OptimizationError::Delta(e))?, addr_back: subrel?, range: range.clone() }),
                         }
                     }
-
+                    IROp::SetSSA(_, _) => todo!(),
+                    IROp::AssignSSA(_) => todo!(),
                     IROp::End => {
                         bytecodes.push(Bytecode::End { delta });
                     }

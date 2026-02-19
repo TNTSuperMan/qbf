@@ -15,7 +15,7 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
         }
 
         if cfg!(feature = "trace") {
-            println!("[TRACE] tier: Opt ptr: {}, executing {}", tape.get_ptr(), program.pc());
+            println!("[TRACE] tier: Opt ptr: {}, val: {}, executing {}", tape.get_ptr(), tape.get(), program.pc());
         }
         
         match program.inst() {

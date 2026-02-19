@@ -7,6 +7,7 @@ use clap::Parser;
 
 mod error;
 mod ir;
+mod ssa;
 mod cisc;
 mod trace;
 mod range;

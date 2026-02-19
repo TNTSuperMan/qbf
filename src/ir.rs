@@ -1,6 +1,8 @@
+use crate::ssa::{inline::inline_ssa_history, r#loop::{detect_ssa_loop, try_2step_loop}, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}};
+
 use crate::error::SyntaxError;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct IR {
     pub pointer: isize,
     pub opcode: IROp,
@@ -16,8 +18,6 @@ pub enum IROp {
     Shift(isize),
     MulAndSetZero(Box<[(isize, u8)]>),
     MovesAndSetZero(Box<[(isize, bool /* is_positive */)]>),
-    MoveAdd(isize),
-    MoveSub(isize),
 
     In,
     Out,
@@ -25,6 +25,9 @@ pub enum IROp {
     LoopStart(usize), // end
     LoopEnd(usize), // start
     LoopEndWithOffset(usize, isize), // start, diff
+
+    SetSSA(u8, SSAOpIR),
+    AssignSSA(u8),
 
     End,
 }
@@ -119,8 +122,6 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                         continue;
                     }
                 } else if is_flat {
-                    is_flat = false;
-
                     if children == [IR { opcode: IROp::Add(255), pointer }] {
                         insts.truncate(start);
                         push_inst!(IROp::Set(0));
@@ -140,16 +141,6 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                             if dests.iter().all(|&(ptr, _)| ptr != pointer) {
                                 insts.truncate(start);
 
-                                if dests.len() == 1 {
-                                    if dests[0].1 == 1 {
-                                        push_inst!(IROp::MoveAdd(dests[0].0));
-                                        continue;
-                                    }
-                                    if dests[0].1 == 255 {
-                                        push_inst!(IROp::MoveSub(dests[0].0));
-                                        continue;
-                                    }
-                                }
                                 if dests.iter().all(|&(_, val)| val == 1 || val == 255) {
                                     let moves = dests.iter().map(
                                         |&(ptr, val)| {
@@ -170,6 +161,26 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                             }
                         }
                     }
+
+                    let ssa = build_ssa_from_ir(children);
+                    if cfg!(feature = "debug") && ssa.is_some() {
+                        let r_ssa = ssa.unwrap();
+                        let inlined = inline_ssa_history(&r_ssa, false);
+                        if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&inlined) {
+                            let fst = inline_ssa_history(&loop_ssa, true);
+                            let fst_order = resolve_eval_order(&fst);
+                            println!("{start} LOOP [{loop_el}] {fst:?}\n{fst_order:?}");
+
+                            let sec = try_2step_loop(&loop_ssa).unwrap();
+                            let sec_order = resolve_eval_order(&sec.0);
+                            println!("{sec:?}\n{sec_order:?}\n");
+                        } else {
+                            let order = resolve_eval_order(&inlined);
+                            println!("{start} notloop {inlined:?}\n{order:?}\n");
+                        }
+                    }
+
+                    is_flat = false;
                 }
 
                 insts[start].opcode = IROp::LoopStart(end);

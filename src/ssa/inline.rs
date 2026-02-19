@@ -1,112 +1,139 @@
-use crate::ssa::{PointerSSAHistory, PointerVersion, SSAOp};
+use crate::ssa::structs::{PointerSSAHistory, PointerVersion, SSAOp, SSAValue};
 
-enum SimpleSSAOp {
-    Const(u8),
-    Version(PointerVersion),
-}
 impl PointerSSAHistory {
-    fn get_simple_op(&self, ver: PointerVersion) -> SimpleSSAOp {
+    fn get_val(&self, ver: PointerVersion, inline_raw: bool) -> SSAValue {
         match self.get_op(ver).unwrap() {
-            SSAOp::set_c(val) => SimpleSSAOp::Const(val),
-            SSAOp::set_p(v) => self.get_simple_op(v),
-            SSAOp::mul_pc(_, 0) => SimpleSSAOp::Const(0),
-            SSAOp::mul_pc(v, 1) => self.get_simple_op(v),
-            _ => SimpleSSAOp::Version(ver)
+            SSAOp::Value(SSAValue::Raw(i)) => {
+                if inline_raw {
+                    SSAValue::Raw(i)
+                } else {
+                    SSAValue::Version(ver)
+                }
+            }
+            SSAOp::Value(v) => v,
+            _ => SSAValue::Version(ver),
         }
     }
 }
 
-pub fn inline_ssa_history(history_map: &PointerSSAHistory) -> PointerSSAHistory {
+pub fn inline_ssa_history(history_map: &PointerSSAHistory, inline_raw: bool) -> PointerSSAHistory {
+    let in1 = internal_inline_ssa_history(history_map, inline_raw);
+    let in2 = internal_inline_ssa_history(&in1, inline_raw);
+    let in3 = internal_inline_ssa_history(&in2, inline_raw);
+    return in3;
+}
+
+fn internal_inline_ssa_history(history_map: &PointerSSAHistory, inline_raw: bool) -> PointerSSAHistory {
     let mut inlined_history_map: PointerSSAHistory = PointerSSAHistory::new();
     for (ptr, history) in history_map.iter() {
         let mut inlined_history: Vec<SSAOp> = vec![];
         for h in history {
-            match h {
-                SSAOp::raw(_raw_ptr) => {}
-                SSAOp::set_c(_val) => {}
-                SSAOp::set_p(_ver) => {}
-                SSAOp::add_pc(ver, val) => {
-                    if *val == 0 {
-                        inlined_history.push(SSAOp::set_p(*ver));
-                        continue;
+            let op: Option<SSAOp> = match h {
+                SSAOp::Value(val) => {
+                    match val {
+                        SSAValue::Const(..) => None,
+                        SSAValue::Version(ver) => Some(history_map.get_op(*ver).unwrap()),
+                        SSAValue::Raw(..) => None,
                     }
-                    match history_map.get_simple_op(*ver) {
-                        SimpleSSAOp::Const(val2) => {
-                            inlined_history.push(SSAOp::set_c(val.wrapping_add(val2)));
-                            continue;
-                        }
-                        SimpleSSAOp::Version(ver2) => {
-                            inlined_history.push(SSAOp::add_pc(ver2, *val));
-                            continue;
-                        }
-                    }
-                }
-                SSAOp::add_pp(ver_left, ver_right) => {
-                    let left = history_map.get_simple_op(*ver_left);
-                    let right = history_map.get_simple_op(*ver_right);
+                },
 
-                    match (left, right) {
-                        (SimpleSSAOp::Const(lv), SimpleSSAOp::Const(rv)) => {
-                            inlined_history.push(SSAOp::set_c(lv.wrapping_add(rv)));
-                            continue;
+                SSAOp::Add(val1, val2) => match (val1, val2) {
+                    (SSAValue::Const(v1), SSAValue::Const(v2)) => Some(SSAOp::Value(SSAValue::Const(v1.wrapping_add(*v2)))),
+                    (SSAValue::Const(v1), SSAValue::Version(v2)) => {
+                        if *v1 == 0 {
+                            Some(SSAOp::Value(history_map.get_val(*v2, inline_raw)))
+                        } else {
+                            Some(SSAOp::Add(SSAValue::Const(*v1), history_map.get_val(*v2, inline_raw)))
                         }
-                        
-                        (SimpleSSAOp::Version(ver_l), SimpleSSAOp::Const(0)) => {
-                            inlined_history.push(SSAOp::set_p(ver_l));
-                            continue;
+                    },
+                    (SSAValue::Const(v1), SSAValue::Raw(v2)) => {
+                        if *v1 == 0 {
+                            Some(SSAOp::Value(SSAValue::Raw(*v2)))
+                        } else {
+                            None
                         }
-                        (SimpleSSAOp::Version(ver_l), SimpleSSAOp::Const(rv)) => {
-                            inlined_history.push(SSAOp::add_pc(ver_l, rv));
-                            continue;
+                    },
+                    (SSAValue::Version(v1), SSAValue::Const(v2)) => {
+                        if *v2 == 0 {
+                            Some(SSAOp::Value(history_map.get_val(*v1, inline_raw)))
+                        } else {
+                            Some(SSAOp::Add(history_map.get_val(*v1, inline_raw), SSAValue::Const(*v2)))
                         }
-                        
-                        
-                        (SimpleSSAOp::Const(0), SimpleSSAOp::Version(ver_r)) => {
-                            inlined_history.push(SSAOp::set_p(ver_r));
-                            continue;
+                    },
+                    (SSAValue::Version(v1), SSAValue::Version(v2)) => Some(SSAOp::Add(history_map.get_val(*v1, inline_raw), history_map.get_val(*v2, inline_raw))),
+                    (SSAValue::Version(v1), SSAValue::Raw(v2)) => Some(SSAOp::Add(history_map.get_val(*v1, inline_raw), SSAValue::Raw(*v2))),
+                    (SSAValue::Raw(v1), SSAValue::Const(v2)) => {
+                        if *v2 == 0 {
+                            Some(SSAOp::Value(SSAValue::Raw(*v1)))
+                        } else {
+                            None
                         }
-                        (SimpleSSAOp::Const(lv), SimpleSSAOp::Version(ver_r)) => {
-                            inlined_history.push(SSAOp::add_pc(ver_r, lv));
-                            continue;
+                    },
+                    (SSAValue::Raw(v1), SSAValue::Version(v2)) => Some(SSAOp::Add(SSAValue::Raw(*v1), history_map.get_val(*v2, inline_raw))),
+                    (SSAValue::Raw(_v1), SSAValue::Raw(_v2)) => None,
+                },
+
+                SSAOp::Sub(val1, val2) => match (val1, val2) {
+                    (SSAValue::Const(v1), SSAValue::Const(v2)) => Some(SSAOp::Value(SSAValue::Const(v1.wrapping_sub(*v2)))),
+                    (SSAValue::Const(v1), SSAValue::Version(v2)) => Some(SSAOp::Sub(SSAValue::Const(*v1), history_map.get_val(*v2, inline_raw))),
+                    (SSAValue::Const(_v1), SSAValue::Raw(_v2)) => None,
+                    (SSAValue::Version(v1), SSAValue::Const(v2)) => {
+                        if *v2 == 0 {
+                            Some(SSAOp::Value(history_map.get_val(*v1, inline_raw)))
+                        } else {
+                            Some(SSAOp::Sub(history_map.get_val(*v1, inline_raw), SSAValue::Const(*v2)))
                         }
-                        _ => {}
-                    }
-                }
-                SSAOp::mul_add(from, dest, val) => {
-                    match history_map.get_simple_op(*from) {
-                        SimpleSSAOp::Const(0) => {
-                            match *val {
-                                0 => {
-                                    inlined_history.push(SSAOp::set_c(0));
-                                }
-                                1 => {
-                                    inlined_history.push(SSAOp::set_p(*dest));
-                                }
-                                _ => {
-                                    inlined_history.push(SSAOp::mul_pc(*dest, *val));
-                                }
-                            }
-                            continue;
+                    },
+                    (SSAValue::Version(v1), SSAValue::Version(v2)) => Some(SSAOp::Sub(history_map.get_val(*v1, inline_raw), history_map.get_val(*v2, inline_raw))),
+                    (SSAValue::Version(v1), SSAValue::Raw(v2)) => Some(SSAOp::Sub(history_map.get_val(*v1, inline_raw), SSAValue::Raw(*v2))),
+                    (SSAValue::Raw(v1), SSAValue::Const(v2)) => {
+                        if *v2 == 0 {
+                            Some(SSAOp::Value(SSAValue::Raw(*v1)))
+                        } else {
+                            None
                         }
-                        SimpleSSAOp::Const(_from) => {}
-                        SimpleSSAOp::Version(from) => {
-                            match *val {
-                                0 => {
-                                    inlined_history.push(SSAOp::set_p(from));
-                                    continue;
-                                }
-                                1 => {
-                                    inlined_history.push(SSAOp::add_pp(from, *dest));
-                                    continue;
-                                }
-                                _ => {}
-                            }
+                    },
+                    (SSAValue::Raw(v1), SSAValue::Version(v2)) => Some(SSAOp::Sub(SSAValue::Raw(*v1), history_map.get_val(*v2, inline_raw))),
+                    (SSAValue::Raw(_v1), SSAValue::Raw(_v2)) => None,
+                },
+
+                SSAOp::Mul(val1, val2) => match (val1, val2) {
+                    (SSAValue::Const(v1), SSAValue::Const(v2)) => Some(SSAOp::Value(SSAValue::Const(v1.wrapping_mul(*v2)))),
+                    (SSAValue::Const(v1), SSAValue::Version(v2)) => {
+                        if *v1 == 1 {
+                            Some(SSAOp::Value(history_map.get_val(*v2, inline_raw)))
+                        } else {
+                            Some(SSAOp::Mul(SSAValue::Const(*v1), history_map.get_val(*v2, inline_raw)))
                         }
-                    }
-                }
-                _ => {}
-            }
-            inlined_history.push(*h);
+                    },
+                    (SSAValue::Const(v1), SSAValue::Raw(v2)) => {
+                        if *v1 == 1 {
+                            Some(SSAOp::Value(SSAValue::Raw(*v2)))
+                        } else {
+                            None
+                        }
+                    },
+                    (SSAValue::Version(v1), SSAValue::Const(v2)) => {
+                        if *v2 == 0 {
+                            Some(SSAOp::Value(history_map.get_val(*v1, inline_raw)))
+                        } else {
+                            Some(SSAOp::Mul(history_map.get_val(*v1, inline_raw), SSAValue::Const(*v2)))
+                        }
+                    },
+                    (SSAValue::Version(v1), SSAValue::Version(v2)) => Some(SSAOp::Mul(history_map.get_val(*v1, inline_raw), history_map.get_val(*v2, inline_raw))),
+                    (SSAValue::Version(v1), SSAValue::Raw(v2)) => Some(SSAOp::Mul(history_map.get_val(*v1, inline_raw), SSAValue::Raw(*v2))),
+                    (SSAValue::Raw(v1), SSAValue::Const(v2)) => {
+                        if *v2 == 1 {
+                            Some(SSAOp::Value(SSAValue::Raw(*v1)))
+                        } else {
+                            None
+                        }
+                    },
+                    (SSAValue::Raw(v1), SSAValue::Version(v2)) => Some(SSAOp::Mul(SSAValue::Raw(*v1), history_map.get_val(*v2, inline_raw))),
+                    (SSAValue::Raw(_v1), SSAValue::Raw(_v2)) => None,
+                },
+            };
+            inlined_history.push(op.unwrap_or(*h));
         }
         inlined_history_map.insert(*ptr, inlined_history);
     }

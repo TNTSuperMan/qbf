@@ -15,7 +15,7 @@ pub fn run_deopt(tape: &mut Tape, program: &mut Program) -> Result<InterpreterRe
         }
 
         if cfg!(feature = "trace") {
-            println!("[TRACE] tier: Deopt ptr: {}, executing {}", tape.data_pointer, program.pc());
+            println!("[TRACE] tier: Deopt ptr: {}, val: {}, executing {}", tape.data_pointer, tape.get()?, program.pc());
         }
         
         match program.inst() {
