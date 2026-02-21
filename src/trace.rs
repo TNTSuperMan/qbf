@@ -11,7 +11,21 @@ impl OperationCountMap {
     }
 }
 
+use std::ops::RangeInclusive;
+
 use crate::{ir::IR, range::RangeInfo};
+
+fn range_to_string(range: &Option<RangeInclusive<usize>>) -> String {
+    match range {
+        None => "-".to_owned(),
+        Some(r) => {
+            let mut str = format!("{}~{}", r.start(), r.end());
+            str += &" ".repeat(std::cmp::max(11 - str.len(), 0) as usize);
+            str += &"|";
+            str
+        }
+    }
+}
 
 pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
     let mut str = String::new();
@@ -35,14 +49,14 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
         if let Some(ri) = range.map.get(&i) {
             use crate::range::MidRange;
 
-            str += &format!("{}{} {:?} (deopt condition: {})\n", "    ".repeat(lv), ir.pointer, ir.opcode, match ri {
+            str += &format!("{} {}{} {:?} (deopt condition: {})\n", range_to_string(&ir.source_range), "    ".repeat(lv), ir.pointer, ir.opcode, match ri {
                 MidRange::None => format!("false"),
                 MidRange::Negative(r) => format!("ptr < {}", r.start),
                 MidRange::Positive(r) => format!("ptr >= {}", r.end),
                 MidRange::Both(r) => format!("ptr < {} || ptr >= {}", r.start, r.end),
             });
         } else {
-            str += &format!("{}{} {:?}\n", "    ".repeat(lv), ir.pointer, ir.opcode);
+            str += &format!("{} {}{} {:?}\n", range_to_string(&ir.source_range), "    ".repeat(lv), ir.pointer, ir.opcode);
         }
 
         if let IROp::LoopStart(..) = ir.opcode {
