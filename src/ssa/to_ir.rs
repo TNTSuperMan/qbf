@@ -131,13 +131,13 @@ pub fn ssa_to_ir(history: &PointerSSAHistory) -> Vec<IR> {
 
     for (i, ver) in order.iter().enumerate() {
         let op = history.get_op(*ver).unwrap();
-        ir.push(IR { pointer: ver.ptr, opcode: IROp::SetSSA(i as u8, ssa_op_to_ir(&op, &order)) });
+        ir.push(IR { pointer: ver.ptr, opcode: IROp::SetSSA(i as u8, ssa_op_to_ir(&op, &order)), source_range: None });
     }
 
     for (&pointer, h) in history.iter() {
         let last_idx = h.len() - 1;
         let i = order.iter().position(|v| *v == PointerVersion { ptr: pointer, version: last_idx }).unwrap();
-        ir.push(IR { pointer, opcode: IROp::AssignSSA(i as u8) });
+        ir.push(IR { pointer, opcode: IROp::AssignSSA(i as u8), source_range: None });
     }
 
     ir

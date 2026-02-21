@@ -75,14 +75,14 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     }
                     IROp::Add(val1) => {
                         match ir_nodes[i + 1] {
-                            IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
+                            IR { opcode: IROp::Add(val2), pointer: ptr2, .. } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|e| OptimizationError::Delta(e))?;
                                 last_ptr = ptr2;
                                 bytecodes.push(Bytecode::AddAdd { delta1: delta, val1: *val1, delta2, val2 });
                                 i += 2;
                                 continue;
                             }
-                            IR { opcode: IROp::Set(val2), pointer: ptr2 } => {
+                            IR { opcode: IROp::Set(val2), pointer: ptr2, .. } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|e| OptimizationError::Delta(e))?;
                                 last_ptr = ptr2;
                                 bytecodes.push(Bytecode::AddSet { delta1: delta, val1: *val1, delta2, val2 });
@@ -96,14 +96,14 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                     }
                     IROp::Set(val1) => {
                         match ir_nodes[i + 1] {
-                            IR { opcode: IROp::Add(val2), pointer: ptr2 } => {
+                            IR { opcode: IROp::Add(val2), pointer: ptr2, .. } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|e| OptimizationError::Delta(e))?;
                                 last_ptr = ptr2;
                                 bytecodes.push(Bytecode::SetAdd { delta1: delta, val1: *val1, delta2, val2 });
                                 i += 2;
                                 continue;
                             }
-                            IR { opcode: IROp::Set(val2), pointer: ptr2 } => {
+                            IR { opcode: IROp::Set(val2), pointer: ptr2, .. } => {
                                 let delta2 = i16::try_from(ptr2 - last_ptr).map_err(|e| OptimizationError::Delta(e))?;
                                 last_ptr = ptr2;
                                 bytecodes.push(Bytecode::SetSet { delta1: delta, val1: *val1, delta2, val2 });
@@ -126,7 +126,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                         }
                         if let Ok(step_i8) = i8::try_from(step) {
                             match ir_nodes[i + 1] {
-                                IR { opcode: IROp::Add(val), pointer: ptr } => {
+                                IR { opcode: IROp::Add(val), pointer: ptr, .. } => {
                                     let delta2 = i8::try_from(ptr - last_ptr).map_err(|e| OptimizationError::Delta(e))?;
                                     last_ptr = ptr;
                                     match mid_range {
@@ -138,7 +138,7 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                                     i += 2;
                                     continue;
                                 }
-                                IR { opcode: IROp::Set(val), pointer: ptr } => {
+                                IR { opcode: IROp::Set(val), pointer: ptr, .. } => {
                                     let delta2 = i8::try_from(ptr - last_ptr).map_err(|e| OptimizationError::Delta(e))?;
                                     last_ptr = ptr;
                                     match mid_range {

@@ -1,13 +1,19 @@
 use std::ops::RangeInclusive;
 
-use crate::{range::extend_ri_pointer, ssa::{inline::inline_ssa_history, r#loop::{detect_ssa_loop, try_2step_loop}, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}}};
+use crate::{range::extend_ri_pointer, ssa::{inline::inline_ssa_history, r#loop::{detect_ssa_loop, try_2step_loop}, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order}}};
 
 use crate::error::SyntaxError;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct IR {
     pub pointer: isize,
     pub opcode: IROp,
+    pub source_range: Option<RangeInclusive<usize>>,
+}
+impl PartialEq for IR {
+    fn eq(&self, other: &Self) -> bool {
+        return self.pointer == other.pointer && self.opcode == other.opcode;
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -61,16 +67,16 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
 
     let mut is_flat: bool = true; // LoopEnd時に確定します
 
-    macro_rules! push_inst {
-        ($opcode:expr) => {
-            insts.push(IR {
-                pointer,
-                opcode: $opcode,
-            })
-        };
-    }
-
-    for char in code.chars() {
+    for (i, char) in code.chars().enumerate() {
+        macro_rules! push_inst {
+            ($opcode:expr) => {
+                insts.push(IR {
+                    pointer,
+                    opcode: $opcode,
+                    source_range: Some(i..=(i+1)),
+                })
+            };
+        }
         match char {
             '!' => {
                 if cfg!(feature = "debug") {
@@ -83,13 +89,19 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                 }
             }
             '+' => {
-                if let Some(IR { pointer: last_ptr, opcode }) = insts.last_mut() {
+                if let Some(IR { pointer: last_ptr, opcode, source_range }) = insts.last_mut() {
                     if *last_ptr == pointer {
                         if let IROp::Add(val) = opcode {
                             *val = val.wrapping_add(1);
+                            if let Some(r) = source_range {
+                                *r = (*r.start())..=(i+1);
+                            }
                             continue;
                         } else if let IROp::Set(val) = opcode {
                             *val = val.wrapping_add(1);
+                            if let Some(r) = source_range {
+                                *r = (*r.start())..=(i+1);
+                            }
                             continue;
                         }
                     }
@@ -97,13 +109,19 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                 push_inst!(IROp::Add(1));
             }
             '-' => {
-                if let Some(IR { pointer: last_ptr, opcode }) = insts.last_mut() {
+                if let Some(IR { pointer: last_ptr, opcode, source_range }) = insts.last_mut() {
                     if *last_ptr == pointer {
                         if let IROp::Add(val) = opcode {
                             *val = val.wrapping_sub(1);
+                            if let Some(r) = source_range {
+                                *r = (*r.start())..=(i+1);
+                            }
                             continue;
                         } else if let IROp::Set(val) = opcode {
                             *val = val.wrapping_sub(1);
+                            if let Some(r) = source_range {
+                                *r = (*r.start())..=(i+1);
+                            }
                             continue;
                         }
                     }
@@ -144,14 +162,14 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                         continue;
                     }
                 } else if is_flat {
-                    if children == [IR { opcode: IROp::Add(255), pointer }] {
+                    if children == [IR { opcode: IROp::Add(255), pointer, source_range: None }] {
                         insts.truncate(start);
                         push_inst!(IROp::Set(0));
                         continue;
                     }
 
                     let mut dests_res: Result<Vec<(isize, u8)>, ()> = children.iter().map(|dest| {
-                        if let IR { pointer, opcode: IROp::Add(val) } = dest {
+                        if let IR { pointer, opcode: IROp::Add(val), .. } = dest {
                             Ok((*pointer, *val))
                         } else {
                             Err(())
@@ -207,16 +225,16 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
 
                 insts[start].opcode = IROp::LoopStart(end);
                 if is_ptr_stable {
-                    insts.push(IR { pointer: end_ptr, opcode: IROp::LoopEnd(start) });
+                    insts.push(IR { pointer: end_ptr, opcode: IROp::LoopEnd(start), source_range: Some(i..=(i+1)) });
                 } else {
-                    insts.push(IR { pointer: end_ptr, opcode: IROp::LoopEndWithOffset(start, end_ptr - start_ptr) });
+                    insts.push(IR { pointer: end_ptr, opcode: IROp::LoopEndWithOffset(start, end_ptr - start_ptr), source_range: Some(i..=(i+1)) });
                 }
             }
             _ => {}
         }
     }
 
-    insts.push(IR { pointer, opcode: IROp::End });
+    insts.push(IR { pointer, opcode: IROp::End, source_range: Some(code.len()..=code.len()) });
 
     if loop_stack.len() != 0 {
         return Err(SyntaxError::UnmatchedOpeningBracket);

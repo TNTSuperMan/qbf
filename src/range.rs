@@ -107,7 +107,7 @@ pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, RangeError> {
     let mut internal_ri = InternalRangeState::new();
 
     for (i, op) in ir_nodes.iter().enumerate().rev() {
-        let IR { pointer, opcode } = op;
+        let IR { pointer, opcode, .. } = op;
         if let IROp::LoopEndWithOffset(..) = opcode {
             internal_ri.push_loopend();
         }
