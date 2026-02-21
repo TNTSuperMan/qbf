@@ -29,11 +29,13 @@ process.exit();
 
 while (true) {
     const code = GenerateRandomBFCode(INPUT_MINLEN, INPUT_MAXLEN);
-    const exec_result = execute({ code, timeout_cycles: MAX_STEPS });
+    const exec_out: number[] = [];
+    const exec_result = execute({ code, timeout_cycles: MAX_STEPS, output(value) { exec_out.push(value); }, });
     if (exec_result.type !== "timeout") {
         const brainrot_process = spawn({
             cmd: [QBF_FILE, "/dev/stdin"],
             stdin: new Blob([code]),
+            stdout: "pipe",
             stderr: "pipe",
         });
         const race_res = await Promise.race([brainrot_process.exited, sleep(TIMEOUT_MS)]);
@@ -48,6 +50,14 @@ while (true) {
                 case 0: // Success
                     if (exec_result.type === "outofrange") {
                         await report(code, `expected outofrange, but success`);
+                    }
+                    const stdout = await brainrot_process.stdout.bytes();
+                    const exec_bin = new Uint8Array(exec_out);
+                    if (exec_bin.length !== stdout.length) {
+                        await report(code, `output length not match`);
+                    }
+                    if (!crypto.timingSafeEqual(stdout, exec_bin)) {
+                        await report(code, `output not match`);
                     }
                     break;
                 case 1: // Normal Error
