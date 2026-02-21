@@ -245,8 +245,6 @@ pub fn ir_to_bytecodes(ir_nodes: &[IR], range_info: &RangeInfo) -> Result<Vec<By
                             MidRange::Both(range) => bytecodes.push(Bytecode::BothRangeCheckJNZ { delta: i8::try_from(delta).map_err(|e| OptimizationError::Delta(e))?, addr_back: subrel?, range: range.clone() }),
                         }
                     }
-                    IROp::SetSSA(_, _) => todo!(),
-                    IROp::AssignSSA(_) => todo!(),
                     IROp::End => {
                         bytecodes.push(Bytecode::End { delta });
                     }

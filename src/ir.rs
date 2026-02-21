@@ -1,8 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::{range::extend_ri_pointer, ssa::{inline::inline_ssa_history, r#loop::{detect_ssa_loop, try_2step_loop}, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order}}};
-
-use crate::error::SyntaxError;
+use crate::{error::SyntaxError, range::extend_ri_pointer};
 
 #[derive(Clone, Debug)]
 pub struct IR {
@@ -33,9 +31,6 @@ pub enum IROp {
     LoopStart(usize), // end
     LoopEnd(usize), // start
     LoopEndWithOffset(usize, isize), // start, diff
-
-    SetSSA(u8, SSAOpIR),
-    AssignSSA(u8),
 
     End,
 }
@@ -199,24 +194,6 @@ pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
                                 push_inst!(IROp::MulAndSetZero(dests.clone().into_boxed_slice()));
                                 continue;
                             }
-                        }
-                    }
-
-                    let ssa = build_ssa_from_ir(children);
-                    if cfg!(feature = "debug") && ssa.is_some() {
-                        let r_ssa = ssa.unwrap();
-                        let inlined = inline_ssa_history(&r_ssa, false);
-                        if let Some((loop_el, loop_ssa)) = detect_ssa_loop(&inlined) {
-                            let fst = inline_ssa_history(&loop_ssa, true);
-                            let fst_order = resolve_eval_order(&fst);
-                            println!("{start} LOOP [{loop_el}] {fst:?}\n{fst_order:?}");
-
-                            let sec = try_2step_loop(&loop_ssa).unwrap();
-                            let sec_order = resolve_eval_order(&sec.0);
-                            println!("{sec:?}\n{sec_order:?}\n");
-                        } else {
-                            let order = resolve_eval_order(&inlined);
-                            println!("{start} notloop {inlined:?}\n{order:?}\n");
                         }
                     }
 

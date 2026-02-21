@@ -125,6 +125,7 @@ fn ssa_op_to_ir(op: &SSAOp, order: &[PointerVersion]) -> SSAOpIR {
     }
 }
 
+/*
 pub fn ssa_to_ir(history: &PointerSSAHistory) -> Vec<IR> {
     let order = resolve_eval_order(history);
     let mut ir: Vec<IR> = vec![];
@@ -142,3 +143,4 @@ pub fn ssa_to_ir(history: &PointerSSAHistory) -> Vec<IR> {
 
     ir
 }
+*/
