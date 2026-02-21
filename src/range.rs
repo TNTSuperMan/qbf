@@ -13,10 +13,10 @@ pub enum RangeError {
     EndOverflow(TryFromIntError, isize),
 }
 
-fn extend_ri_pointer(range: &RangeInclusive<isize>, pointer: isize) -> RangeInclusive<isize> {
+pub fn extend_ri_pointer(range: &RangeInclusive<isize>, pointer: isize) -> RangeInclusive<isize> {
     return (*range.start()).min(pointer)..=(*range.end()).max(pointer);
 }
-fn extend_ri_range(range1: &RangeInclusive<isize>, range2: &RangeInclusive<isize>) -> RangeInclusive<isize> {
+pub fn extend_ri_range(range1: &RangeInclusive<isize>, range2: &RangeInclusive<isize>) -> RangeInclusive<isize> {
     return (*range1.start()).min(*range2.start())..=(*range1.end()).max(*range2.end());
 }
 
@@ -39,8 +39,8 @@ impl InternalRangeState {
             curr: isize::MAX..=isize::MIN,
         }
     }
-    pub fn subscribe(&mut self, pointer: isize) {
-        self.curr = extend_ri_pointer(&self.curr, pointer);
+    pub fn subscribe(&mut self, range: &RangeInclusive<isize>) {
+        self.curr = extend_ri_range(&self.curr, range);
     }
     pub fn insert(&mut self, ir_at: usize, pointer: isize) {
         self.map.insert(ir_at, RSMapElement {
@@ -106,27 +106,18 @@ impl RangeInfo {
 pub fn generate_range_info(ir_nodes: &[IR]) -> Result<RangeInfo, RangeError> {
     let mut internal_ri = InternalRangeState::new();
 
-    for (i, IR { pointer, opcode }) in ir_nodes.iter().enumerate().rev() {
+    for (i, op) in ir_nodes.iter().enumerate().rev() {
+        let IR { pointer, opcode } = op;
         if let IROp::LoopEndWithOffset(..) = opcode {
             internal_ri.push_loopend();
         }
         if let IROp::LoopEnd(..) = opcode {
             internal_ri.push_loopend();
         }
-        internal_ri.subscribe(*pointer);
+        internal_ri.subscribe(&op.get_range());
         match opcode {
             IROp::Shift(_step) => {
                 internal_ri.insert(i, *pointer);
-            }
-            IROp::MulAndSetZero(dests) => {
-                for (ptr, _val) in dests {
-                    internal_ri.subscribe(*ptr);
-                }
-            }
-            IROp::MovesAndSetZero(dests) => {
-                for (ptr, _val) in dests {
-                    internal_ri.subscribe(*ptr);
-                }
             }
             IROp::LoopStart(end) => {
                 internal_ri.pop_loopstart();

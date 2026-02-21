@@ -1,4 +1,6 @@
-use crate::ssa::{inline::inline_ssa_history, r#loop::{detect_ssa_loop, try_2step_loop}, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}};
+use std::ops::RangeInclusive;
+
+use crate::{range::extend_ri_pointer, ssa::{inline::inline_ssa_history, r#loop::{detect_ssa_loop, try_2step_loop}, parse::build_ssa_from_ir, to_ir::{SSAOpIR, resolve_eval_order, ssa_to_ir}}};
 
 use crate::error::SyntaxError;
 
@@ -30,6 +32,26 @@ pub enum IROp {
     AssignSSA(u8),
 
     End,
+}
+
+impl IR {
+    pub fn get_range(&self) -> RangeInclusive<isize> {
+        let mut range = self.pointer..=self.pointer;
+        match &self.opcode {
+            IROp::MulAndSetZero(dests) => {
+                for (dest_i, _) in dests {
+                    range = extend_ri_pointer(&range, *dest_i);
+                }
+            }
+            IROp::MovesAndSetZero(dests) => {
+                for (dest_i, _) in dests {
+                    range = extend_ri_pointer(&range, *dest_i);
+                }
+            }
+            _ => {}
+        }
+        range
+    }
 }
 
 pub fn parse_to_ir(code: &str) -> Result<Vec<IR>, SyntaxError> {
