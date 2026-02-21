@@ -24,6 +24,7 @@ async function report(code: string, description: string) {
 ${description.replaceAll(`[`,`{`).replaceAll(']','}')}
 ]
 ${code}`);
+process.exit();
 }
 
 while (true) {
@@ -44,7 +45,15 @@ while (true) {
             stdout.write(".");
             const stderr = await brainrot_process.stderr.text();
             switch (race_res) {
-                case 0: // Expected behavior in fuzzing
+                case 0: // Success
+                    if (exec_result.type === "outofrange") {
+                        await report(code, `expected outofrange, but success`);
+                    }
+                    break;
+                case 1: // Normal Error
+                    if (exec_result.type === "success") {
+                        await report(code, `expected success, but outofrange`);
+                    }
                     break;
                 case 101: // panic
                     await report(code, `panic occurred:\n${stderr}`);

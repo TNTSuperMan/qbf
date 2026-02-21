@@ -15,7 +15,7 @@ if (!sourcefile) {
     });
     switch (result.type) {
         case "timeout": console.log("Result: Timeout"); break;
-        case "outofrange": console.log(`Result: Out of range to ${result.pointer}`); break;
+        case "outofrange": console.log(`Result: Out of range to ${result.pointer} at ${result.at}`); break;
         case "success": console.log(`Result: Success in ${result.time_ns}ns, ${result.cycles} cycles`);
     }
 }

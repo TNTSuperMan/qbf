@@ -2,7 +2,7 @@ import { nanoseconds } from "bun";
 
 export type ExecResult =
     | { type: "timeout" }
-    | { type: "outofrange", pointer: number, cycles: number, }
+    | { type: "outofrange", pointer: number, cycles: number, at: number }
     | { type: "success", cycles: number, time_ns: number };
 export interface ExecOptions {
     code: string;
@@ -33,8 +33,8 @@ export function execute({ code, timeout_cycles, output, input }: ExecOptions): E
             const end = nanoseconds();
             return { type: "success", cycles, time_ns: end - start };
         }
-        if (pointer < 0 || pointer > 65535) { // Out of range
-            return { type: "outofrange", pointer, cycles };
+        if ((pointer < 0 || pointer > 65535) && "+-[].,".includes(code[pc]!)) { // Out of range
+            return { type: "outofrange", pointer, cycles, at: pc };
         }
         switch (code[pc]) {
             case "+": memory[pointer]!++; break;

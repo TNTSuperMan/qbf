@@ -12,7 +12,7 @@ export function GenerateRandomBFCode(min: number, max: number) {
             case 2: code += "<"; break;
             case 3: code += ">"; break;
             case 4: code += "["; lv += 1; break;
-            case 5: code += "]"; lv -= 1; break;
+            case 5: if (lv >= 1) { code += "]"; lv -= 1; } break;
             case 6: code += "."; break;
         }
     }
