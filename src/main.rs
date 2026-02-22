@@ -2,7 +2,7 @@ use std::{fs, process::ExitCode};
 
 const TAPE_LENGTH: usize = 65536;
 
-use crate::{cisc::run_cisc, error::BrainrotError, ir::parse_to_ir, range::generate_range_info};
+use crate::{cisc::{error::RuntimeError, run_cisc}, error::BrainrotError, ir::parse_to_ir, range::generate_range_info};
 use clap::Parser;
 
 mod error;
@@ -54,7 +54,14 @@ fn main() -> ExitCode {
             } else {
                 eprintln!("{err}");
             }
-            ExitCode::FAILURE
+            match err {
+                BrainrotError::RuntimeError { err: RuntimeError::TimeoutError, .. } => ExitCode::from(3),
+                | BrainrotError::RuntimeError { err: RuntimeError::OOBGet(..), .. }
+                | BrainrotError::RuntimeError { err: RuntimeError::OOBSet(..), .. }
+                | BrainrotError::RuntimeError { err: RuntimeError::OOBAdd(..), .. }
+                | BrainrotError::RuntimeError { err: RuntimeError::OOBSub(..), .. } => ExitCode::from(2),
+                _ => ExitCode::FAILURE,
+            }
         }
     }
 }
