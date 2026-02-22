@@ -9,10 +9,10 @@ mod trace;
 mod program;
 mod internal;
 
-pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool) -> Result<(), BrainrotError> {
+pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: bool, timeout: Option<usize>) -> Result<(), BrainrotError> {
     let insts = ir_to_bytecodes(ir_nodes, range_info)?;
     let mut tape = Tape::new();
-    let mut program = Program::new(&insts, flush);
+    let mut program = Program::new(&insts, flush, timeout);
     let mut tier = if range_info.do_opt_first {
         Tier::Opt
     } else {

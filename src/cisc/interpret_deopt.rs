@@ -12,6 +12,8 @@ pub fn run_deopt(tape: &mut Tape, program: &mut Program) -> Result<InterpreterRe
         if cfg!(feature = "debug") {
             let pc = program.pc();
             program.ocm.deopt[pc] += 1;
+
+            program.check_timeout()?;
         }
 
         if cfg!(feature = "trace") {

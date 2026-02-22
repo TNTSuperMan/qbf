@@ -33,4 +33,7 @@ pub enum BrainrotError {
 
     #[error("IOError: {0}")]
     IOError(#[from] io::Error),
+
+    #[error("FeatureError: {0}")]
+    FetureError(String),
 }

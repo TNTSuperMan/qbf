@@ -23,6 +23,9 @@ struct Args {
 
     #[arg(short, long)]
     out_dump: bool,
+
+    #[arg(short, long)]
+    timeout: Option<usize>,
 }
 
 fn resulty_main(args: Args) -> Result<(), BrainrotError> {
@@ -33,8 +36,11 @@ fn resulty_main(args: Args) -> Result<(), BrainrotError> {
     if cfg!(feature = "debug") && args.out_dump {
         fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info))?;
     }
+    if cfg!(not(feature = "debug")) && args.timeout.is_some() {
+        return Err(BrainrotError::FetureError("timeout not supported on not debug feature".to_owned()));
+    }
 
-    Ok(run_cisc(&ir, &range_info, args.flush, args.out_dump)?)
+    Ok(run_cisc(&ir, &range_info, args.flush, args.out_dump, args.timeout)?)
 }
 
 fn main() -> ExitCode {

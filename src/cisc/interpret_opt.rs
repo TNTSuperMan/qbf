@@ -12,6 +12,8 @@ pub unsafe fn run_opt(tape: &mut UnsafeTape, program: &mut UnsafeProgram) -> Res
         if cfg!(feature = "debug") {
             let pc = program.pc();
             program.inner.ocm.opt[pc] += 1;
+
+            program.check_timeout()?;
         }
 
         if cfg!(feature = "trace") {

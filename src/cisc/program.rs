@@ -1,20 +1,28 @@
-use crate::{cisc::bytecode::Bytecode, trace::OperationCountMap};
+use crate::{cisc::{bytecode::Bytecode, error::RuntimeError}, trace::OperationCountMap};
 
 pub struct Program<'a> {
     pub ocm: OperationCountMap,
     insts: &'a [Bytecode],
     pc: usize,
+    step_remains: Option<usize>,
     pub flush: bool,
 }
 impl<'a> Program<'a> {
-    pub fn new(bytecodes: &'a [Bytecode], flush: bool) -> Program<'a> {
+    pub fn new(bytecodes: &'a [Bytecode], flush: bool, timeout: Option<usize>) -> Program<'a> {
         let ocm = OperationCountMap::new(bytecodes.len());
         Program {
             ocm,
             insts: bytecodes,
             pc: 0,
+            step_remains: timeout,
             flush,
         }
+    }
+    pub fn check_timeout(&mut self) -> Result<(), RuntimeError> {
+        if let Some(rem) = self.step_remains.as_mut() {
+            *rem = rem.checked_sub(1).ok_or_else(|| RuntimeError::TimeoutError)?;
+        }
+        Ok(())
     }
     pub fn pc(&self) -> usize {
         self.pc
@@ -55,6 +63,9 @@ impl<'a, 'b> UnsafeProgram<'a, 'b> {
         }
     }
 
+    pub fn check_timeout(&mut self) -> Result<(), RuntimeError> {
+        self.inner.check_timeout()
+    }
     pub fn pc(&self) -> usize {
         // SAFETY: 差分を求めるだけだから安全なはず
         unsafe { self.internal_pc.offset_from_unsigned(self.internal_insts_at) }

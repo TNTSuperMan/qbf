@@ -32,5 +32,8 @@ pub enum RuntimeError {
     OOBSub(usize, u8),
 
     #[error("{0}")]
-    IOError(#[from] io::Error)
+    IOError(#[from] io::Error),
+
+    #[error("Timeouted")]
+    TimeoutError,
 }
