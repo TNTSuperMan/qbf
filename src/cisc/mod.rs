@@ -48,7 +48,6 @@ pub fn run_cisc(ir_nodes: &[IR], range_info: &RangeInfo, flush: bool, out_dump: 
                     if out_dump {
                         write_trace(&tape, &program)?;
                     }
-                    println!("PC: {}({:?}), ptr: {}", pc, program.inst(), tape.data_pointer);
                 }
                 return Err(BrainrotError::RuntimeError {
                     err,
