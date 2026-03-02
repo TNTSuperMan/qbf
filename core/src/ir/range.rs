@@ -1,17 +1,6 @@
-use std::{collections::HashMap, num::TryFromIntError, ops::{Range, RangeFrom, RangeInclusive, RangeTo}};
+use std::{collections::HashMap, ops::{Range, RangeFrom, RangeInclusive, RangeTo}};
 
-use thiserror::Error;
-
-use crate::{TAPE_LENGTH, ir::{IR, IROp}};
-
-#[derive(Error, Debug)]
-pub enum RangeError {
-    #[error("Start range overflow")]
-    StartOverflow(TryFromIntError, isize),
-    
-    #[error("End range overflow")]
-    EndOverflow(TryFromIntError, isize),
-}
+use crate::{TAPE_LENGTH, ir::{error::RangeError, ir::{IR, IROp}}};
 
 pub fn extend_ri_pointer(range: &RangeInclusive<isize>, pointer: isize) -> RangeInclusive<isize> {
     return (*range.start()).min(pointer)..=(*range.end()).max(pointer);

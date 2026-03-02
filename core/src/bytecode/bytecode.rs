@@ -1,6 +1,6 @@
 use std::{fmt::Debug, ops::{Range, RangeFrom, RangeTo}};
 
-use crate::{cisc::error::OptimizationError, ir::{IR, IROp}, range::{MidRange, RangeInfo}};
+use crate::{bytecode::error::OptimizationError, ir::{ir::{IR, IROp}, range::{MidRange, RangeInfo}}};
 
 // メモ: jz ゼロ時ジャンプ jnz 非ゼロ時ジャンプ
 

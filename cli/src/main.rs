@@ -1,16 +1,7 @@
-use std::{fs, process::ExitCode};
+use core::{Brainrot, BrainrotInit, error::{BrainrotError, RuntimeError}};
+use std::{fs, io::{Read, Write, stdin, stdout}, process::ExitCode};
 
-const TAPE_LENGTH: usize = 65536;
-
-use crate::{cisc::{error::RuntimeError, run_cisc}, error::BrainrotError, ir::parse_to_ir, range::generate_range_info};
 use clap::Parser;
-
-mod error;
-mod ir;
-mod ssa;
-mod cisc;
-mod trace;
-mod range;
 
 #[derive(Parser, Debug)]
 #[command(name = "brainrot")]
@@ -22,30 +13,44 @@ struct Args {
     flush: bool,
 
     #[arg(short, long)]
-    out_dump: bool,
-
-    #[arg(short, long)]
-    timeout: Option<usize>,
+    dump: Option<String>,
 }
 
 fn resulty_main(args: Args) -> Result<(), BrainrotError> {
     let code = fs::read_to_string(args.file)?;
-    let ir = parse_to_ir(&code)?;
-    let range_info = generate_range_info(&ir)?;
     
-    if cfg!(feature = "debug") && args.out_dump {
-        fs::write("./box/ir", crate::trace::generate_ir_trace(&ir, &range_info))?;
-    }
-    if cfg!(not(feature = "debug")) && args.timeout.is_some() {
-        return Err(BrainrotError::FetureError("timeout not supported on not debug feature".to_owned()));
+    let mut stdin = stdin().lock();
+    let mut stdout = stdout().lock();
+    let mut stdin_buf = [0u8; 1];
+
+    let mut vm = Brainrot::new(&code, BrainrotInit {
+        input: || {
+            match stdin.read_exact(&mut stdin_buf) {
+                Ok(_) => stdin_buf[0],
+                Err(_) => 0,
+            }
+        },
+        output: |v| {
+            let _ = stdout.write_all(&[v]);
+            if args.flush {
+                let _ = stdout.flush();
+            }
+        },
+        io_break: false,
+        timeout_step: None,
+    })?;
+    vm.step()?;
+
+    if let Some(dump) = args.dump {
+        fs::write(&dump, vm.generate_trace())?;
     }
 
-    Ok(run_cisc(&ir, &range_info, args.flush, args.out_dump, args.timeout)?)
+    Ok(())
 }
 
 fn main() -> ExitCode {
     let args = Args::parse();
-    
+
     match resulty_main(args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {

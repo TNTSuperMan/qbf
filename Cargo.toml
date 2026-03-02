@@ -1,20 +1,3 @@
-[package]
-name = "brainrot"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-clap = { version = "4.5.53", features = ["derive"] }
-thiserror = "2.0.18"
-
-[features]
-default = ["debug"]
-debug = []
-trace = ["debug"]
-
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
+[workspace]
+members = ["cli","core"]
+resolver = "2"

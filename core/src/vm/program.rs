@@ -1,21 +1,29 @@
-use crate::{cisc::{bytecode::Bytecode, error::RuntimeError}, trace::OperationCountMap};
+use crate::{bytecode::bytecode::Bytecode, error::RuntimeError, trace::OperationCountMap};
 
-pub struct Program<'a> {
+pub struct Program<I, O>
+where I: FnMut() -> u8,
+      O: FnMut(u8) -> (),
+{
     pub ocm: OperationCountMap,
-    insts: &'a [Bytecode],
+    insts: Box<[Bytecode]>,
     pc: usize,
-    step_remains: Option<usize>,
-    pub flush: bool,
+    pub step_remains: Option<usize>,
+    input_fn: I,
+    output_fn: O,
+    io_break: bool,
 }
-impl<'a> Program<'a> {
-    pub fn new(bytecodes: &'a [Bytecode], flush: bool, timeout: Option<usize>) -> Program<'a> {
+impl<I, O> Program<I, O>
+where I: FnMut() -> u8,
+      O: FnMut(u8) -> (),
+{
+    pub fn new(bytecodes: Box<[Bytecode]>, timeout: Option<usize>, input_fn: I, output_fn: O, io_break: bool) -> Program<I, O> {
         let ocm = OperationCountMap::new(bytecodes.len());
         Program {
             ocm,
             insts: bytecodes,
             pc: 0,
             step_remains: timeout,
-            flush,
+            input_fn, output_fn, io_break,
         }
     }
     pub fn check_timeout(&mut self) -> Result<(), RuntimeError> {
@@ -28,7 +36,7 @@ impl<'a> Program<'a> {
         self.pc
     }
     pub fn insts(&self) -> &[Bytecode] {
-        self.insts
+        &self.insts
     }
     pub fn inst(&self) -> &Bytecode {
         &self.insts[self.pc]
@@ -42,16 +50,32 @@ impl<'a> Program<'a> {
     pub fn jump_back(&mut self, addr: usize) {
         self.pc = self.pc.wrapping_sub(addr);
     }
+    pub fn input(&mut self) -> u8 {
+        (self.input_fn)()
+    }
+    pub fn output(&mut self, value: u8) {
+        (self.output_fn)(value)
+    }
+    pub fn io_break(&self) -> bool {
+        self.io_break
+    }
 }
 
-pub struct UnsafeProgram<'a, 'b> {
-    pub inner: &'b mut Program<'a>,
+pub struct UnsafeProgram<'a, I, O>
+where I: FnMut() -> u8,
+      O: FnMut(u8) -> (),
+ {
+    pub inner: &'a mut Program<I, O>,
     insts_len: usize,
     internal_insts_at: *const Bytecode,
     internal_pc: *const Bytecode,
 }
-impl<'a, 'b> UnsafeProgram<'a, 'b> {
-    pub unsafe fn new(program: &'b mut Program<'a>) -> UnsafeProgram<'a, 'b> {
+#[allow(unsafe_op_in_unsafe_fn)]
+impl<'a, I, O> UnsafeProgram<'a, I, O>
+where I: FnMut() -> u8,
+      O: FnMut(u8) -> (),
+ {
+    pub unsafe fn new(program: &'a mut Program<I, O>) -> UnsafeProgram<'a, I, O> {
         let insts_len = program.insts.len();
         let internal_insts_at = program.insts.as_ptr();
         let pc = program.pc();
@@ -87,7 +111,10 @@ impl<'a, 'b> UnsafeProgram<'a, 'b> {
         self.internal_pc = self.internal_pc.add(1);
     }
 }
-impl<'a, 'b> Drop for UnsafeProgram<'a, 'b> {
+impl<'a, I, O> Drop for UnsafeProgram<'a, I, O>
+where I: FnMut() -> u8,
+      O: FnMut(u8) -> (),
+ {
     fn drop(&mut self) {
         self.inner.pc = self.pc();
     }

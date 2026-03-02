@@ -13,7 +13,7 @@ impl OperationCountMap {
 
 use std::ops::RangeInclusive;
 
-use crate::{ir::IR, range::RangeInfo};
+use crate::{bytecode::bytecode::Bytecode, ir::{ir::{IR, IROp}, range::{MidRange, RangeInfo}}, vm::program::Program};
 
 fn range_to_string(range: &Option<RangeInclusive<usize>>) -> String {
     match range {
@@ -38,8 +38,6 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
     }
 
     for (i, ir) in ir_nodes.iter().enumerate() {
-        use crate::ir::IROp;
-
         if let IROp::LoopEnd(..) = ir.opcode {
             lv -= 1;
         }
@@ -47,8 +45,6 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
             lv -= 1;
         }
         if let Some(ri) = range.map.get(&i) {
-            use crate::range::MidRange;
-
             str += &format!("{} {}{} {:?} (deopt condition: {})\n", range_to_string(&ir.source_range), "    ".repeat(lv), ir.pointer, ir.opcode, match ri {
                 MidRange::None => format!("false"),
                 MidRange::Negative(r) => format!("ptr < {}", r.start),
@@ -63,6 +59,30 @@ pub fn generate_ir_trace(ir_nodes: &[IR], range: &RangeInfo) -> String {
             lv += 1;
         }
     }
+
+    str
+}
+
+
+pub fn generate_bytecode_trace<I: FnMut() -> u8, O: FnMut(u8) -> ()>(program: &Program<I, O>) -> String {
+    let mut str = String::new();
+    let mut lv: usize = 0;
+
+    for (i, b) in program.insts().iter().enumerate() {
+        match b {
+            Bytecode::JmpIfNotZero { .. } => lv -= 1,
+            Bytecode::PositiveRangeCheckJNZ { .. } => lv -= 1,
+            Bytecode::NegativeRangeCheckJNZ { .. } => lv -= 1,
+            Bytecode::BothRangeCheckJNZ { .. } => lv -= 1,
+            _ => {}
+        }
+        str += &format!("{}\t{}\t{}{:?}\n", (program.ocm.deopt[i].wrapping_add(1) as f64).log2().floor(), (program.ocm.opt[i].wrapping_add(1) as f64).log2().floor(), "    ".repeat(lv), b);
+        match b {
+            Bytecode::JmpIfZero { .. } => lv += 1,
+            _ => {}
+        }
+    }
+    str += &format!("step count(deopt/opt): {}/{}", program.ocm.deopt.iter().fold(0, |acc, e| acc + e), program.ocm.opt.iter().fold(0, |acc, e| acc + e));
 
     str
 }

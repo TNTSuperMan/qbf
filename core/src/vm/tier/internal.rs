@@ -6,5 +6,6 @@ pub enum Tier {
 
 pub enum InterpreterResult {
     End,
+    IoBreak,
     ToggleTier(Tier),
 }
